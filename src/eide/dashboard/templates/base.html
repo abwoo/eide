@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}EIDE Dashboard{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+    .sidebar-link { display: flex; align-items: center; gap: 0.75rem; padding: 0.625rem 0.875rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; color: #9ca3af; transition: all 0.15s ease; }
+    .sidebar-link:hover { background: #1f2937; color: #f3f4f6; }
+    .sidebar-link.active { background: #4f46e5; color: #fff; }
+    .sidebar-icon { width: 1.25rem; height: 1.25rem; flex-shrink: 0; }
+    .card { background: #fff; border-radius: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04); border: 1px solid #f0f0f0; padding: 1.5rem; }
+    .card-header { font-size: 0.875rem; font-weight: 600; color: #111827; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.025em; }
+    .stat-value { font-size: 1.875rem; font-weight: 700; color: #111827; line-height: 1.2; }
+    .stat-label { font-size: 0.8125rem; color: #6b7280; font-weight: 500; }
+    .badge { display: inline-flex; align-items: center; padding: 0.125rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; }
+    .diff-add { background: #f0fdf4; border-left: 3px solid #22c55e; }
+    .diff-remove { background: #fef2f2; border-left: 3px solid #ef4444; }
+    .diff-modify { background: #eff6ff; border-left: 3px solid #3b82f6; }
+    .btn-primary { display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.5rem 1rem; background: #4f46e5; color: #fff; border-radius: 0.5rem; font-size: 0.8125rem; font-weight: 500; transition: background 0.15s; }
+    .btn-primary:hover { background: #4338ca; }
+    .btn-secondary { display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.5rem 1rem; background: #f3f4f6; color: #374151; border-radius: 0.5rem; font-size: 0.8125rem; font-weight: 500; transition: background 0.15s; }
+    .btn-secondary:hover { background: #e5e7eb; }
+    .input { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.5rem; font-size: 0.8125rem; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
+    .input:focus { border-color: #818cf8; box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
+    .select { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.5rem; font-size: 0.8125rem; background: #fff; outline: none; }
+    .select:focus { border-color: #818cf8; box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
+    table.data-table { width: 100%; border-collapse: collapse; }
+    table.data-table thead th { text-align: left; padding: 0.75rem 1rem; font-size: 0.75rem; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.025em; border-bottom: 2px solid #f3f4f6; background: #fafafa; }
+    table.data-table tbody tr { transition: background 0.1s; }
+    table.data-table tbody tr:hover { background: #f9fafb; }
+    table.data-table tbody td { padding: 0.75rem 1rem; font-size: 0.8125rem; border-bottom: 1px solid #f3f4f6; }
+    .diff-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
+    .diff-table td, .diff-table th { padding: 0.5rem 0.75rem; border: 1px solid #e5e7eb; vertical-align: top; }
+    .diff-table th { background: #f9fafb; font-weight: 600; color: #374151; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.025em; }
+    .diff-cell-a { background: #fef2f2; }
+    .diff-cell-b { background: #f0fdf4; }
+    .diff-cell-same { background: #fff; }
+    .highlight-add { background: #dcfce7; padding: 0.125rem 0.25rem; border-radius: 0.125rem; }
+    .highlight-remove { background: #fecaca; padding: 0.125rem 0.25rem; border-radius: 0.125rem; }
+    .highlight-change { background: #bfdbfe; padding: 0.125rem 0.25rem; border-radius: 0.125rem; }
+    .timeline-line { position: relative; padding-left: 2rem; }
+    .timeline-line::before { content: ''; position: absolute; left: 0.5rem; top: 0.375rem; bottom: -0.5rem; width: 2px; background: #e5e7eb; }
+    .timeline-line:last-child::before { display: none; }
+    .timeline-dot { position: absolute; left: 0; top: 0.375rem; width: 1rem; height: 1rem; border-radius: 50%; border: 2px solid #fff; }
+    .scrollbar-thin::-webkit-scrollbar { width: 4px; height: 4px; }
+    .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+    .scrollbar-thin::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 2px; }
+  </style>
+</head>
+<body class="bg-[#f5f5f4] min-h-screen antialiased">
+  <div class="flex h-screen">
+    <!-- Sidebar -->
+    <aside class="w-[240px] bg-[#111] text-white flex flex-col flex-shrink-0">
+      <div class="p-5 border-b border-[#222]">
+        <a href="/" class="flex items-center gap-2">
+          <svg class="w-7 h-7 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          <span class="text-lg font-bold tracking-tight">EIDE</span>
+        </a>
+        <p class="text-[10px] text-gray-500 mt-0.5 tracking-wider uppercase">Experiment Intelligence</p>
+      </div>
+      <nav class="flex-1 p-3 space-y-0.5 overflow-y-auto scrollbar-thin">
+        <a href="/" class="sidebar-link {% if request.url.path == '/' %}active{% endif %}">
+          <svg class="sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+          Overview
+        </a>
+        <a href="/experiments" class="sidebar-link {% if '/experiments' in request.url.path and '/experiments/' not in request.url.path %}active{% endif %}">
+          <svg class="sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+          Experiments
+        </a>
+        <a href="/diff" class="sidebar-link {% if '/diff' in request.url.path %}active{% endif %}">
+          <svg class="sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+          Diff & Compare
+        </a>
+        <a href="/graph" class="sidebar-link {% if '/graph' in request.url.path %}active{% endif %}">
+          <svg class="sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
+          Knowledge Graph
+        </a>
+        <div class="border-t border-[#222] my-3"></div>
+        <p class="px-3 text-[10px] text-gray-600 uppercase tracking-wider font-semibold mb-1">Actions</p>
+        <button onclick="navigator.clipboard.writeText('eide create --name \\\"run\\\"'); alert('Copied: eide create')" class="sidebar-link text-gray-500">
+          <svg class="sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"/></svg>
+          Create
+        </button>
+        <button onclick="navigator.clipboard.writeText('eide replay '); alert('Copied: eide replay')" class="sidebar-link text-gray-500">
+          <svg class="sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          Replay
+        </button>
+        <button onclick="navigator.clipboard.writeText('eide search '); alert('Copied: eide search')" class="sidebar-link text-gray-500">
+          <svg class="sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          Search
+        </button>
+      </nav>
+      <div class="p-4 border-t border-[#222] text-[10px] text-gray-600">
+        <div class="flex items-center justify-between">
+          <span>EIDE v0.1.0</span>
+          <span class="w-2 h-2 rounded-full bg-green-500"></span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <div class="flex-1 flex flex-col min-w-0">
+      <!-- Top bar -->
+      <header class="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center gap-3">
+          <h2 class="text-sm font-semibold text-gray-800">{% block page_title %}Dashboard{% endblock %}</h2>
+        </div>
+        <div class="flex items-center gap-3">
+          <form method="get" action="/experiments" class="relative">
+            <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <input type="text" name="search" placeholder="Search experiments..." class="pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg w-64 focus:outline-none focus:border-indigo-300 focus:ring-1 focus:ring-indigo-200 bg-gray-50">
+          </form>
+          <a href="/diff" class="btn-secondary text-xs py-1.5 px-3">Compare</a>
+        </div>
+      </header>
+      <!-- Content -->
+      <main class="flex-1 overflow-auto p-6 scrollbar-thin">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+</body>
+</html>

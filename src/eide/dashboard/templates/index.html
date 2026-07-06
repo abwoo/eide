@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}EIDE — Overview{% endblock %}
+{% block page_title %}Overview{% endblock %}
+{% block content %}
+
+{% if not stats %}
+<div class="flex flex-col items-center justify-center py-24">
+  <svg class="w-20 h-20 text-gray-300 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+  <h2 class="text-xl font-semibold text-gray-700 mb-2">No experiments yet</h2>
+  <p class="text-gray-500 mb-8 max-w-md text-center">Create your first experiment from the CLI to start tracking and comparing results.</p>
+  <div class="flex gap-4">
+    <a href="/experiments" class="btn-primary">Go to Experiments</a>
+    <button onclick="navigator.clipboard.writeText('eide create --name my-first-run'); alert('Copied command!')" class="btn-secondary">Copy CLI Command</button>
+  </div>
+</div>
+{% else %}
+
+<!-- Stats Row -->
+<div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+  <div class="card flex items-center gap-4">
+    <div class="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
+      <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+    </div>
+    <div>
+      <div class="stat-value">{{ stats.total }}</div>
+      <div class="stat-label">Total Experiments</div>
+    </div>
+  </div>
+  {% for k, v in stats.tag_counts.items() %}
+  <div class="card flex items-center gap-4">
+    <div class="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
+      <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+    </div>
+    <div>
+      <div class="stat-value">{{ v }}</div>
+      <div class="stat-label truncate">{{ k }}</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Metrics & Recent -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+  {% if stats.top_metrics %}
+  <div class="lg:col-span-1">
+    <div class="card">
+      <div class="card-header">Top Metrics</div>
+      <div class="space-y-3">
+        {% for k, v in stats.top_metrics.items() %}
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-gray-600 truncate">{{ k }}</span>
+          <span class="text-sm font-semibold text-gray-900 font-mono">{{ v }}</span>
+        </div>
+        <div class="w-full bg-gray-100 rounded-full h-1.5">
+          <div class="bg-indigo-500 h-1.5 rounded-full" style="width: {{ (v|float / stats.top_metrics.values()|list|first|float) * 100 if stats.top_metrics.values()|list|first|float > 0 else 0 }}%"></div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="{% if stats.top_metrics %}lg:col-span-2{% else %}lg:col-span-3{% endif %}">
+    <div class="card">
+      <div class="flex items-center justify-between mb-4">
+        <div class="card-header mb-0">Recent Experiments</div>
+        <a href="/experiments" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium">View all →</a>
+      </div>
+      {% if entries %}
+      <div class="overflow-x-auto">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Tags</th>
+              <th>Project</th>
+              <th>Date</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for entry in entries[:10] %}
+            <tr>
+              <td>
+                <a href="/experiments/{{ entry.id }}" class="font-medium text-gray-900 hover:text-indigo-600">{{ entry.name or '(unnamed)' }}</a>
+              </td>
+              <td>
+                {% for k, v in entry.tags.items() %}
+                <span class="badge bg-gray-100 text-gray-700 mr-1 text-[10px]">{{ k }}={{ v }}</span>
+                {% else %}
+                <span class="text-gray-400 text-xs">—</span>
+                {% endfor %}
+              </td>
+              <td class="text-gray-500">{{ entry.get('project', '') or '—' }}</td>
+              <td class="text-gray-500 font-mono text-xs">{{ entry.timestamp[:10] }}</td>
+              <td class="text-right">
+                <a href="/experiments/{{ entry.id }}" class="text-indigo-600 hover:text-indigo-800 text-xs font-medium">View →</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-gray-400 text-sm py-8 text-center">No experiments yet.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+  <a href="/diff" class="card hover:shadow-md transition-shadow cursor-pointer block">
+    <div class="flex items-center gap-3 mb-2">
+      <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+      </div>
+      <div>
+        <div class="text-sm font-semibold text-gray-900">Compare Runs</div>
+        <div class="text-xs text-gray-500">Side-by-side diff</div>
+      </div>
+    </div>
+  </a>
+  <a href="/graph" class="card hover:shadow-md transition-shadow cursor-pointer block">
+    <div class="flex items-center gap-3 mb-2">
+      <div class="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
+        <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
+      </div>
+      <div>
+        <div class="text-sm font-semibold text-gray-900">Lineage Graph</div>
+        <div class="text-xs text-gray-500">Experiment relationships</div>
+      </div>
+    </div>
+  </a>
+  <div class="card">
+    <div class="flex items-center gap-3 mb-2">
+      <div class="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
+        <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+      </div>
+      <div>
+        <div class="text-sm font-semibold text-gray-900">Reproduce</div>
+        <div class="text-xs text-gray-500">Replay any run</div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="flex items-center gap-3 mb-2">
+      <div class="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center">
+        <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      </div>
+      <div>
+        <div class="text-sm font-semibold text-gray-900">Assess Risk</div>
+        <div class="text-xs text-gray-500">eide advise risk</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}

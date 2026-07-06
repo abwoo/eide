@@ -1,0 +1,583 @@
+{% extends "base.html" %}
+{% block title %}Experiment {{ exp.id[:10] }}{% endblock %}
+{% block page_title %}{{ exp.name or '(unnamed)' }}{% endblock %}
+{% block content %}
+
+<div class="mb-6">
+  <a href="/experiments" class="text-xs text-indigo-600 hover:underline mb-2 inline-block">← Back to experiments</a>
+  <div class="flex items-start justify-between">
+    <div>
+      <div class="flex items-center gap-3">
+        <h1 class="text-xl font-bold text-gray-900">{{ exp.name or '(unnamed)' }}</h1>
+        <span class="px-2.5 py-0.5 rounded-full text-xs font-medium
+          {% if risk.risk_level == 'low' %}bg-green-50 text-green-700
+          {% elif risk.risk_level == 'medium' %}bg-yellow-50 text-yellow-700
+          {% elif risk.risk_level == 'high' %}bg-red-50 text-red-700
+          {% else %}bg-gray-50 text-gray-700{% endif %}">
+          {{ risk.risk_level|upper }} risk
+        </span>
+      </div>
+      <p class="text-xs text-gray-400 font-mono mt-1">{{ exp.id }}</p>
+    </div>
+    <div class="flex gap-2">
+      <a href="/replay/{{ exp.id }}" class="btn-secondary text-xs">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        Replay
+      </a>
+      <a href="/diff?a={{ exp.id }}" class="btn-secondary text-xs">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+        Compare
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Main 3-column layout -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
+
+  <!-- Left Column: Info, Tags, Metadata -->
+  <div class="xl:col-span-3 space-y-6">
+
+    <div class="card">
+      <div class="card-header">Status</div>
+      <dl class="space-y-2 text-sm">
+        <div class="flex justify-between">
+          <dt class="text-gray-500">Project</dt>
+          <dd class="text-gray-900 font-medium">{{ exp.project or '—' }}</dd>
+        </div>
+        <div class="flex justify-between">
+          <dt class="text-gray-500">Created</dt>
+          <dd class="text-gray-900 text-xs">{{ exp.timestamp.isoformat()[:19] }}</dd>
+        </div>
+        <div class="flex justify-between">
+          <dt class="text-gray-500">Description</dt>
+          <dd class="text-gray-900 text-xs truncate max-w-[140px]" title="{{ exp.description or '' }}">{{ exp.description or '—' }}</dd>
+        </div>
+      </dl>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Tags</div>
+      {% if exp.tags %}
+      <div class="flex flex-wrap gap-1.5">
+        {% for k, v in exp.tags.items() %}
+        <span class="badge bg-indigo-50 text-indigo-700 text-xs">{{ k }}={{ v }}</span>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-gray-400 text-xs">No tags.</p>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-header">Data Versions</div>
+      {% if exp.data_versions %}
+      <div class="space-y-1.5">
+        {% for k, v in exp.data_versions.items() %}
+        <div class="flex justify-between text-sm bg-gray-50 rounded px-2.5 py-1.5">
+          <span class="text-gray-600 text-xs">{{ k }}</span>
+          <span class="font-mono text-xs font-medium text-gray-900">{{ v }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-gray-400 text-xs">No data versions.</p>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-header">Decisions</div>
+      {% if exp.decisions %}
+      <div class="space-y-1.5">
+        {% for k, v in exp.decisions.items() %}
+        <div class="text-sm bg-amber-50 rounded px-2.5 py-1.5">
+          <span class="text-amber-800 text-xs font-medium">{{ k }}</span>
+          <p class="text-amber-700 text-xs mt-0.5">{{ v }}</p>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-gray-400 text-xs">No decisions recorded.</p>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-header">Metadata</div>
+      {% if exp.metadata %}
+      <div class="space-y-1 text-xs max-h-40 overflow-y-auto scrollbar-thin">
+        {% for k, v in exp.metadata.items() %}
+        {% if k != 'resource_snapshots' %}
+        <div class="flex justify-between py-0.5">
+          <span class="text-gray-500 truncate max-w-[100px]">{{ k }}</span>
+          <span class="text-gray-700 font-mono">{{ v }}</span>
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-gray-400 text-xs">No metadata.</p>
+      {% endif %}
+    </div>
+
+    <!-- Baseline card -->
+    {% if baseline_id %}
+    <div class="card bg-indigo-50 border-indigo-100">
+      <div class="card-header text-indigo-900">Baseline Comparison</div>
+      <p class="text-xs text-indigo-700 mb-2">Most similar experiment:</p>
+      <a href="/experiments/{{ baseline_id }}" class="text-sm font-mono text-indigo-600 hover:underline">{{ baseline_id[:12] }}</a>
+      {% if baseline_changes %}
+      <p class="text-xs text-indigo-500 mt-1">{{ baseline_changes }} change(s) detected</p>
+      {% endif %}
+      <div class="mt-3 pt-3 border-t border-indigo-200">
+        <a href="/diff?a={{ baseline_id }}&b={{ exp.id }}" class="text-xs font-medium text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+          Diff with baseline
+        </a>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Risk details -->
+    {% if risk.risks %}
+    <div class="card">
+      <div class="card-header">Risk Details</div>
+      <div class="space-y-2">
+        {% for r in risk.risks %}
+        <div class="flex items-start gap-2 text-sm">
+          <span class="mt-0.5 w-1.5 h-1.5 rounded-full flex-shrink-0
+            {% if r.severity == 'warning' %}bg-yellow-500
+            {% elif r.severity == 'info' %}bg-blue-500
+            {% else %}bg-gray-400{% endif %}"></span>
+          <span class="text-gray-700 text-xs">{{ r.message }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Center: Content -->
+  <div class="xl:col-span-6 space-y-6">
+
+    <!-- Metrics Timeline -->
+    {% if exp.outputs.metric_history %}
+    <div class="card">
+      <div class="card-header">Metrics Timeline</div>
+      <div class="grid grid-cols-1 gap-6">
+        {% for key in exp.outputs.metric_history.keys() %}
+        <div>
+          <div class="text-xs font-medium text-gray-500 mb-1">{{ key }}</div>
+          <canvas id="chart-{{ key|replace('.', '_') }}" height="180"></canvas>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Multi-run Overlay Comparison (W&B style) -->
+    <div class="card">
+      <div class="card-header flex items-center justify-between">
+        <span>Compare with other runs</span>
+        <div class="flex items-center gap-2">
+          <select id="overlay-run-select" class="text-xs border border-gray-200 rounded px-2 py-1 bg-gray-50 max-w-[180px]">
+            <option value="">Select run to overlay...</option>
+          </select>
+        </div>
+      </div>
+      <div id="overlay-metrics-container" class="grid grid-cols-1 gap-4">
+        <p class="text-xs text-gray-400">Select another experiment to overlay its metrics on the same timeline.</p>
+      </div>
+    </div>
+
+    {% if exp.outputs.metrics %}
+    <div class="card">
+      <div class="card-header">Metrics Summary</div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {% for k, v in exp.outputs.metrics.items() %}
+        <div class="text-center p-3 bg-gray-50 rounded-lg">
+          <div class="text-xl font-bold text-gray-900 font-mono">{{ v }}</div>
+          <div class="text-xs text-gray-500 truncate mt-0.5">{{ k }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Parameters -->
+    <div class="card">
+      <div class="card-header">Parameters</div>
+      {% if exp.parameters %}
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+        {% for k, v in exp.parameters.items() %}
+        <div class="bg-gray-50 rounded-lg px-3 py-2">
+          <div class="text-[10px] text-gray-500 truncate">{{ k }}</div>
+          <div class="text-sm font-mono font-medium text-gray-900 mt-0.5 truncate">{{ v }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-gray-400 text-sm">No parameters recorded.</p>
+      {% endif %}
+    </div>
+
+    <!-- Pipeline DAG -->
+    <div class="card">
+      <div class="card-header">Pipeline</div>
+      {% if exp.pipeline.steps %}
+      {% if exp.pipeline.steps|length > 1 %}
+      <div id="pipeline-dag" style="height: {{ 60 + 50 * exp.pipeline.steps|length }}px; width: 100%;"></div>
+      {% else %}
+      <div class="space-y-1.5">
+        {% for step in exp.pipeline.steps %}
+        <div class="flex items-center gap-3 bg-gray-50 rounded-lg px-3.5 py-2.5">
+          <div class="w-2 h-2 rounded-full flex-shrink-0
+            {% if step.type == 'training' %}bg-green-500
+            {% elif step.type == 'data' %}bg-blue-500
+            {% elif step.type == 'eval' %}bg-yellow-500
+            {% else %}bg-gray-400{% endif %}">
+          </div>
+          <div class="flex-1 min-w-0">
+            <span class="text-sm font-medium text-gray-900">{{ step.name }}</span>
+            {% if step.type %}<span class="text-xs text-gray-500 ml-2">({{ step.type }})</span>{% endif %}
+          </div>
+          {% if step.duration_seconds %}
+          <span class="text-xs text-gray-500 font-mono">{{ step.duration_seconds }}s</span>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% else %}
+      <p class="text-gray-400 text-sm">No pipeline steps recorded.</p>
+      {% endif %}
+    </div>
+
+    <!-- Resource Usage Charts -->
+    {% if exp.metadata and exp.metadata.resource_snapshots %}
+    {% set snaps = exp.metadata.resource_snapshots %}
+    {% if snaps|length > 1 and snaps[0].get('cpu_percent') is not none %}
+    <div class="card">
+      <div class="card-header">Resource Usage</div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <div class="text-xs font-medium text-gray-500 mb-1">CPU</div>
+          <canvas id="chart-cpu" height="160"></canvas>
+        </div>
+        <div>
+          <div class="text-xs font-medium text-gray-500 mb-1">RAM</div>
+          <canvas id="chart-ram" height="160"></canvas>
+        </div>
+        {% if snaps[0].get('gpu_0_util_percent') is not none %}
+        <div>
+          <div class="text-xs font-medium text-gray-500 mb-1">GPU</div>
+          <canvas id="chart-gpu" height="160"></canvas>
+        </div>
+        {% endif %}
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 pt-4 border-t border-gray-100">
+        {% if exp.metadata.avg_cpu_percent %}
+        <div class="text-center">
+          <div class="text-lg font-bold text-gray-900">{{ exp.metadata.avg_cpu_percent }}%</div>
+          <div class="text-[10px] text-gray-500">Avg CPU</div>
+        </div>
+        <div class="text-center">
+          <div class="text-lg font-bold text-gray-900">{{ exp.metadata.max_cpu_percent }}%</div>
+          <div class="text-[10px] text-gray-500">Max CPU</div>
+        </div>
+        {% endif %}
+        {% if exp.metadata.avg_ram_percent %}
+        <div class="text-center">
+          <div class="text-lg font-bold text-gray-900">{{ exp.metadata.avg_ram_percent }}%</div>
+          <div class="text-[10px] text-gray-500">Avg RAM</div>
+        </div>
+        {% endif %}
+        <div class="text-center">
+          <div class="text-lg font-bold text-gray-900">{{ snaps|length }}</div>
+          <div class="text-[10px] text-gray-500">Samples</div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <!-- Execution Trace -->
+    {% if exp.execution_trace %}
+    <div class="card">
+      <div class="card-header">Execution Trace</div>
+      <div class="space-y-0">
+        {% for evt in exp.execution_trace %}
+        <div class="timeline-line pb-4">
+          <div class="timeline-dot
+            {% if evt.action == 'start' %}bg-green-500
+            {% elif evt.action == 'end' %}bg-blue-500
+            {% elif evt.action == 'error' %}bg-red-500
+            {% else %}bg-gray-400{% endif %}">
+          </div>
+          <div class="text-xs">
+            <span class="font-semibold text-gray-900">{{ evt.step }}</span>
+            <span class="text-gray-400 mx-1">·</span>
+            <span class="text-gray-500">{{ evt.action }}</span>
+          </div>
+          {% if evt.timestamp %}
+          <div class="text-[10px] text-gray-400 font-mono mt-0.5">{{ evt.timestamp.isoformat()[:19] }}</div>
+          {% endif %}
+          {% if evt.details %}
+          <div class="mt-1 text-[10px] text-gray-500 space-y-0.5">
+            {% for dk, dv in evt.details.items() %}
+            <div><span class="text-gray-400">{{ dk }}:</span> {{ dv }}</div>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Right: Environment / Context -->
+  <div class="xl:col-span-3 space-y-6">
+
+    <div class="card">
+      <div class="card-header">Environment</div>
+      <dl class="space-y-2 text-sm">
+        <div class="flex justify-between">
+          <dt class="text-gray-500">OS</dt>
+          <dd class="text-gray-900 text-xs">{{ exp.environment.os or '—' }}</dd>
+        </div>
+        <div class="flex justify-between">
+          <dt class="text-gray-500">Python</dt>
+          <dd class="text-gray-900 text-xs">{{ exp.environment.python_version or '—' }}</dd>
+        </div>
+        {% if exp.environment.hardware %}
+        <div class="border-t border-gray-100 pt-2 mt-2"></div>
+        {% for hk, hv in exp.environment.hardware.items() %}
+        <div class="flex justify-between">
+          <dt class="text-gray-500 text-[11px]">{{ hk }}</dt>
+          <dd class="text-gray-700 text-[11px] font-mono truncate max-w-[120px]" title="{{ hv }}">{{ hv }}</dd>
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% if exp.environment.runtime_versions %}
+        <div class="border-t border-gray-100 pt-2 mt-2"></div>
+        {% for rk, rv in exp.environment.runtime_versions.items() %}
+        <div class="flex justify-between">
+          <dt class="text-gray-500 text-[11px]">{{ rk }}</dt>
+          <dd class="text-gray-700 text-[11px] font-mono truncate max-w-[120px]" title="{{ rv }}">{{ rv }}</dd>
+        </div>
+        {% endfor %}
+        {% endif %}
+      </dl>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Key Packages</div>
+      {% if exp.environment.packages %}
+      <div class="space-y-1">
+        {% for pkg in ['numpy', 'torch', 'tensorflow', 'scikit-learn', 'pandas', 'matplotlib', 'transformers', 'jax'] %}
+        {% if pkg in exp.environment.packages %}
+        <div class="flex justify-between text-xs py-0.5">
+          <span class="text-gray-600">{{ pkg }}</span>
+          <span class="text-gray-900 font-mono">{{ exp.environment.packages[pkg] }}</span>
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+      <div class="mt-2 pt-2 border-t border-gray-100">
+        <div class="flex justify-between text-xs text-gray-500">
+          <span>Total packages</span>
+          <span class="font-mono">{{ exp.environment.packages|length }}</span>
+        </div>
+      </div>
+      {% else %}
+      <p class="text-gray-400 text-xs">No package info.</p>
+      {% endif %}
+    </div>
+
+    {% if exp.outputs.artifacts %}
+    <div class="card">
+      <div class="card-header">Artifacts</div>
+      <div class="space-y-1">
+        {% for a in exp.outputs.artifacts %}
+        <div class="text-xs text-gray-700 font-mono truncate">{{ a }}</div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+<script>
+const CURRENT_EXP_ID = "{{ exp.id }}";
+const COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#14b8a6'];
+let chartInstances = {};
+
+// Metrics Timeline Charts (current experiment)
+(async function() {
+  try {
+    const resp = await fetch(`/api/experiments/${CURRENT_EXP_ID}/metrics`);
+    const series = await resp.json();
+    let idx = 0;
+    for (const [key, points] of Object.entries(series)) {
+      if (!points || points.length < 2) continue;
+      const canvasId = 'chart-' + key.replace(/\./g, '_');
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) continue;
+      chartInstances[key] = new Chart(canvas, {
+        type: 'line',
+        data: {
+          labels: points.map(p => p.step),
+          datasets: [{
+            label: key + ' (this)',
+            data: points.map(p => p.value),
+            borderColor: COLORS[idx % COLORS.length],
+            backgroundColor: COLORS[idx % COLORS.length] + '15',
+            fill: true,
+            tension: 0.25,
+            pointRadius: 2.5,
+            pointHoverRadius: 5,
+            borderWidth: 2,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: ctx => `${key}: ${ctx.parsed.y}` } }
+          },
+          scales: {
+            x: { title: { display: true, text: 'Step', font: { size: 10 } }, ticks: { font: { size: 9 } }, grid: { display: false } },
+            y: { title: { display: true, text: key, font: { size: 10 } }, ticks: { font: { size: 9 } }, grid: { color: '#f3f4f6' } }
+          },
+          interaction: { intersect: false, mode: 'index' }
+        }
+      });
+      idx++;
+    }
+  } catch(e) { /* ignore */ }
+
+  // Multi-run overlay selector
+  try {
+    const listResp = await fetch('/api/experiments');
+    const allExps = await listResp.json();
+    const select = document.getElementById('overlay-run-select');
+    if (!select) return;
+    allExps.forEach(e => {
+      if (e.id === CURRENT_EXP_ID) return;
+      const opt = document.createElement('option');
+      opt.value = e.id;
+      opt.textContent = (e.name || '(unnamed)') + ' (' + e.id.slice(0, 8) + ')';
+      select.appendChild(opt);
+    });
+  } catch(e) { /* ignore */ }
+})();
+
+// Overlay handler
+document.addEventListener('DOMContentLoaded', function() {
+  const select = document.getElementById('overlay-run-select');
+  if (!select) return;
+  select.addEventListener('change', async function() {
+    const otherId = this.value;
+    const container = document.getElementById('overlay-metrics-container');
+    if (!otherId) {
+      container.innerHTML = '<p class="text-xs text-gray-400">Select another experiment to overlay its metrics on the same timeline.</p>';
+      return;
+    }
+    try {
+      const resp = await fetch(`/api/experiments/${otherId}/metrics`);
+      const series = await resp.json();
+      // Add overlay datasets to each existing chart
+      const colorOffset = 3;
+      let metricIdx = 0;
+      for (const [key, points] of Object.entries(series)) {
+        if (!points || points.length < 2) continue;
+        const chart = chartInstances[key];
+        if (!chart) continue;
+        const color = COLORS[(metricIdx + colorOffset) % COLORS.length];
+        chart.data.datasets.push({
+          label: key + ' (#' + otherId.slice(0, 6) + ')',
+          data: points.map(p => p.value),
+          borderColor: color,
+          backgroundColor: color + '08',
+          borderDash: [4, 3],
+          fill: false,
+          tension: 0.25,
+          pointRadius: 2,
+          borderWidth: 1.5,
+        });
+        chart.update();
+        metricIdx++;
+      }
+      container.innerHTML = '<p class="text-xs text-green-600">Overlaid metrics from <strong>#' + otherId.slice(0, 8) + '</strong> (dashed lines)</p>';
+    } catch(e) {
+      container.innerHTML = '<p class="text-xs text-red-500">Failed to load overlay data.</p>';
+    }
+  });
+});
+
+// Resource Usage Charts
+{% if exp.metadata and exp.metadata.resource_snapshots %}
+{% set snaps = exp.metadata.resource_snapshots %}
+{% if snaps|length > 1 and snaps[0].get('cpu_percent') is not none %}
+(function() {
+  const snaps = {{ snaps | tojson | safe }};
+  const labels = snaps.map((_, i) => i);
+  function makeChart(id, data, color) {
+    const ctx = document.getElementById(id);
+    if (!ctx) return;
+    new Chart(ctx, {
+      type: 'line',
+      data: { labels, datasets: [{ data, borderColor: color, backgroundColor: color + '15', fill: true, tension: 0.25, pointRadius: 1.5, borderWidth: 2 }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: true } },
+        scales: { x: { display: false }, y: { beginAtZero: true, max: 100, grid: { color: '#f3f4f6' }, ticks: { font: { size: 9 } } } }
+      }
+    });
+  }
+  makeChart('chart-cpu', snaps.map(s => s.cpu_percent), '#6366f1');
+  makeChart('chart-ram', snaps.map(s => s.ram_percent), '#22c55e');
+  const gpuEl = document.getElementById('chart-gpu');
+  if (gpuEl) {
+    const gpuKeys = Object.keys(snaps[0]).filter(k => k.startsWith('gpu_') && k.endsWith('_util_percent'));
+    const datasets = gpuKeys.map((k, i) => ({
+      label: k, data: snaps.map(s => s[k]), borderColor: ['#f59e0b', '#ef4444'][i] || '#8b5cf6', tension: 0.25, pointRadius: 1.5, borderWidth: 2, fill: false
+    }));
+    new Chart(gpuEl, {
+      type: 'line', data: { labels, datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'top', labels: { font: { size: 9 } } } },
+        scales: { x: { display: false }, y: { beginAtZero: true, max: 100, grid: { color: '#f3f4f6' }, ticks: { font: { size: 9 } } } }
+      }
+    });
+  }
+})();
+{% endif %}
+{% endif %}
+
+// Pipeline DAG
+document.addEventListener('DOMContentLoaded', function() {
+  const container = document.getElementById('pipeline-dag');
+  if (!container) return;
+  const steps = {{ exp.pipeline.steps | tojson | safe }};
+  if (steps.length < 2) return;
+  const colors = { 'training': '#22c55e', 'data': '#3b82f6', 'eval': '#f59e0b', 'preprocessing': '#8b5cf6', 'default': '#6b7280' };
+  const nodes = steps.map((s, i) => ({
+    id: i + 1, label: s.name, shape: 'box',
+    color: { background: colors[s.type] || colors.default, border: '#fff' },
+    font: { color: '#fff', size: 12 }, margin: { top: 8, bottom: 8, left: 12, right: 12 },
+  }));
+  const edges = [];
+  for (let i = 0; i < steps.length - 1; i++) {
+    edges.push({ from: i + 1, to: i + 2, arrows: 'to', color: { color: '#d1d5db', inherit: false }, width: 2, smooth: { type: 'curvedCW', roundness: 0.1 } });
+  }
+  new vis.Network(container, { nodes, edges }, {
+    layout: { hierarchical: { direction: 'LR', sortMethod: 'directed', levelSeparation: 180, nodeSpacing: 120 } },
+    physics: false, interaction: { dragNodes: false, zoomView: false, hover: true, tooltipDelay: 200 },
+  });
+});
+</script>
+
+{% endblock %}

@@ -1,0 +1,25 @@
+name: my-training-run
+project: example-project
+description: A sample experiment config
+parameters:
+  learning_rate: 0.01
+  batch_size: 32
+  epochs: 10
+pipeline:
+  - name: load_data
+    type: data
+  - name: train
+    type: training
+    parameters:
+      epochs: 10
+  - name: evaluate
+    type: eval
+metrics:
+  accuracy: 0.92
+  loss: 0.35
+tags:
+  dataset: mnist
+  model: cnn
+data_versions:
+  train: v2
+  test: v1

@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}Experiments{% endblock %}
+{% block page_title %}Experiments{% endblock %}
+{% block content %}
+
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+  <div>
+    <p class="text-sm text-gray-500"><span class="font-semibold text-gray-800">{{ entries|length }}</span> experiment{% if entries|length != 1 %}s{% endif %} total</p>
+  </div>
+  <div class="flex gap-2">
+    <form method="get" action="/experiments" class="flex gap-2">
+      <input type="text" name="search" value="{{ search or '' }}" placeholder="Search by name, tag, param..." class="input w-64">
+      <button type="submit" class="btn-secondary text-xs">Search</button>
+      {% if search %}
+      <a href="/experiments" class="btn-secondary text-xs">Clear</a>
+      {% endif %}
+    </form>
+  </div>
+</div>
+
+{% if not entries %}
+<div class="card flex flex-col items-center justify-center py-20">
+  <svg class="w-16 h-16 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+  <p class="text-gray-500 mb-1">No experiments found{% if search %} matching "{{ search }}"{% endif %}.</p>
+  <p class="text-gray-400 text-sm">Create one with: <code class="text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded text-xs">eide create --name "my-run"</code></p>
+</div>
+{% else %}
+<!-- Project grouping (MLflow hierarchy style) -->
+{% set projects = {} %}
+{% for entry in entries %}
+{% set pname = entry.get('project') or '(no project)' %}
+{% set _ = projects.update({pname: projects.get(pname, 0) + 1}) %}
+{% endfor %}
+<div class="flex flex-wrap gap-2 mb-4">
+  <span class="text-xs text-gray-500 font-medium mr-1 self-center">Projects:</span>
+  <button onclick="filterByProject('')" class="badge bg-gray-100 text-gray-700 text-xs cursor-pointer hover:bg-gray-200 active">all ({{ entries|length }})</button>
+  {% for pname, pcount in projects.items()|sort %}
+  <button onclick="filterByProject('{{ pname }}')" class="badge bg-purple-50 text-purple-700 text-xs cursor-pointer hover:bg-purple-100" data-project="{{ pname }}">{{ pname }} ({{ pcount }})</button>
+  {% endfor %}
+</div>
+
+<div class="card p-0 overflow-hidden">
+  <table class="data-table" id="experiments-table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>ID</th>
+        <th>Project</th>
+        <th>Tags</th>
+        <th>Pipeline</th>
+        <th>Risk</th>
+        <th>Timestamp</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry in entries %}
+      <tr class="cursor-pointer experiment-row" onclick="window.location='/experiments/{{ entry.id }}'" data-project="{{ entry.get('project') or '(no project)' }}">
+        <td>
+          <a href="/experiments/{{ entry.id }}" class="font-medium text-gray-900 hover:text-indigo-600">{{ entry.name or '(unnamed)' }}</a>
+        </td>
+        <td class="font-mono text-xs text-gray-400">{{ entry.id[:10] }}</td>
+        <td>
+          {% if entry.get('project') %}
+          <span class="badge bg-purple-50 text-purple-700">{{ entry.project }}</span>
+          {% else %}
+          <span class="text-gray-400 text-xs">—</span>
+          {% endif %}
+        </td>
+        <td>
+          <div class="flex flex-wrap gap-1">
+            {% for k, v in entry.tags.items() %}
+            <span class="badge bg-gray-100 text-gray-700 text-[10px]">{{ k }}={{ v }}</span>
+            {% else %}
+            <span class="text-gray-400 text-xs">—</span>
+            {% endfor %}
+          </div>
+        </td>
+        <td class="text-gray-500 text-xs">{{ entry.pipeline_name or '—' }}</td>
+        <td><span class="risk-badge" data-exp-id="{{ entry.id }}"><span class="text-gray-300 text-xs">...</span></span></td>
+        <td class="text-gray-400 font-mono text-xs">{{ entry.timestamp[:19] }}</td>
+        <td class="text-right">
+          <a href="/experiments/{{ entry.id }}" class="text-indigo-600 hover:text-indigo-800 text-xs font-medium">Detail →</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+// Project filter
+window.filterByProject = function(project) {
+  document.querySelectorAll('[data-project]').forEach(btn => {
+    btn.classList.remove('bg-purple-100', 'active');
+    btn.classList.add('bg-purple-50');
+  });
+  const active = document.querySelector('[data-project="' + project.replace(/"/g, '') + '"]') || document.querySelector('[data-project=""]') || document.querySelector('button:first-of-type');
+  if (active) {
+    active.classList.remove('bg-purple-50');
+    active.classList.add('bg-purple-100', 'active');
+  }
+  document.querySelectorAll('.experiment-row').forEach(row => {
+    if (!project || row.dataset.project === project) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  });
+};
+
+// Load risk badges
+(async function() {
+  const badges = document.querySelectorAll('.risk-badge');
+  for (const badge of badges) {
+    try {
+      const resp = await fetch('/api/experiments/' + badge.dataset.expId + '/risk');
+      const data = await resp.json();
+      const level = data.risk_level;
+      const colors = { low: 'bg-green-50 text-green-700', medium: 'bg-yellow-50 text-yellow-700', high: 'bg-red-50 text-red-700', unknown: 'bg-gray-50 text-gray-500' };
+      badge.innerHTML = '<span class="badge ' + (colors[level] || colors.unknown) + ' text-[10px]">' + level.toUpperCase() + '</span>';
+    } catch(e) {
+      badge.innerHTML = '<span class="text-gray-300 text-xs">—</span>';
+    }
+  }
+})();
+</script>
+{% endif %}
+
+{% endblock %}

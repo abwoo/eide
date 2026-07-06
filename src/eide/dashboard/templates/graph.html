@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+{% block title %}Knowledge Graph{% endblock %}
+{% block page_title %}Knowledge Graph{% endblock %}
+{% block content %}
+
+<div class="flex items-center justify-between mb-6">
+  <p class="text-sm text-gray-500">Visual exploration of experiment lineage and relationships.</p>
+  <span class="text-xs text-gray-400" id="node-count">0 nodes</span>
+</div>
+
+<div class="grid grid-cols-1 xl:grid-cols-4 gap-6">
+  <div class="xl:col-span-3">
+    <div class="card p-0 overflow-hidden">
+      <div id="graph-container" style="height: 600px;" class="bg-[#fafafa]"></div>
+    </div>
+  </div>
+
+  <!-- Legend & Controls -->
+  <div class="space-y-4">
+    <div class="card">
+      <div class="card-header">Legend</div>
+      <div class="space-y-2.5">
+        <div class="flex items-center gap-2.5">
+          <div class="w-3 h-3 rounded-full bg-[#22c55e] flex-shrink-0"></div>
+          <div>
+            <div class="text-xs font-medium text-gray-900">Experiment</div>
+            <div class="text-[10px] text-gray-500">Root node</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2.5">
+          <div class="w-3 h-3 rounded-full bg-[#3b82f6] flex-shrink-0"></div>
+          <div>
+            <div class="text-xs font-medium text-gray-900">Parameter</div>
+            <div class="text-[10px] text-gray-500">Configuration values</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2.5">
+          <div class="w-3 h-3 rounded-full bg-[#8b5cf6] flex-shrink-0"></div>
+          <div>
+            <div class="text-xs font-medium text-gray-900">Dataset</div>
+            <div class="text-[10px] text-gray-500">Data version nodes</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2.5">
+          <div class="w-3 h-3 rounded-full bg-[#f59e0b] flex-shrink-0"></div>
+          <div>
+            <div class="text-xs font-medium text-gray-900">Pipeline</div>
+            <div class="text-[10px] text-gray-500">Pipeline definition</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2.5">
+          <div class="w-3 h-3 rounded-full bg-[#ef4444] flex-shrink-0"></div>
+          <div>
+            <div class="text-xs font-medium text-gray-900">Metric</div>
+            <div class="text-[10px] text-gray-500">Result values</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2.5">
+          <div class="w-3 h-3 rounded-full bg-[#6b7280] flex-shrink-0"></div>
+          <div>
+            <div class="text-xs font-medium text-gray-900">Tag</div>
+            <div class="text-[10px] text-gray-500">Labels</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Controls</div>
+      <div class="space-y-2">
+        <button onclick="zoomIn()" class="btn-secondary text-xs w-full justify-center">Zoom In</button>
+        <button onclick="zoomOut()" class="btn-secondary text-xs w-full justify-center">Zoom Out</button>
+        <button onclick="resetView()" class="btn-secondary text-xs w-full justify-center">Reset View</button>
+        <button onclick="toggleLabels()" class="btn-secondary text-xs w-full justify-center">Toggle Labels</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+(function() {
+  const nodes = {{ nodes|safe }};
+  const edges = {{ edges|safe }};
+  if (!nodes || nodes.length === 0) {
+    document.getElementById('graph-container').innerHTML = '<div class="flex items-center justify-center h-full text-gray-400 text-sm">No graph data available.</div>';
+    return;
+  }
+  document.getElementById('node-count').textContent = nodes.length + ' nodes, ' + edges.length + ' edges';
+
+  const colorMap = {
+    'experiment': '#22c55e', 'parameter': '#3b82f6', 'dataset': '#8b5cf6',
+    'pipeline': '#f59e0b', 'metric': '#ef4444', 'tag': '#6b7280',
+  };
+
+  const width = document.getElementById('graph-container').clientWidth;
+  const height = 600;
+  let showLabels = true;
+
+  const svg = d3.select('#graph-container')
+    .append('svg').attr('width', width).attr('height', height);
+
+  const g = svg.append('g');
+
+  // Zoom
+  const zoom = d3.zoom().scaleExtent([0.15, 5]).on('zoom', (event) => {
+    g.attr('transform', event.transform);
+  });
+  svg.call(zoom);
+
+  window.zoomIn = () => svg.transition().duration(300).call(zoom.scaleBy, 1.4);
+  window.zoomOut = () => svg.transition().duration(300).call(zoom.scaleBy, 0.7);
+  window.resetView = () => svg.transition().duration(300).call(zoom.transform, d3.zoomIdentity);
+  window.toggleLabels = () => {
+    showLabels = !showLabels;
+    g.selectAll('.node-label').attr('display', showLabels ? null : 'none');
+  };
+
+  // Force simulation
+  const simulation = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(edges).id(d => d.id).distance(100))
+    .force('charge', d3.forceManyBody().strength(-250))
+    .force('center', d3.forceCenter(width / 2, height / 2))
+    .force('collision', d3.forceCollide(d => d.type === 'experiment' ? 35 : 20));
+
+  // Edges
+  const link = g.append('g')
+    .selectAll('line').data(edges).join('line')
+    .attr('stroke', '#d1d5db').attr('stroke-width', 1).attr('stroke-opacity', 0.5)
+    .attr('marker-end', 'url(#arrow)');
+
+  // Arrow marker
+  svg.append('defs').append('marker')
+    .attr('id', 'arrow').attr('viewBox', '0 -5 10 10').attr('refX', 20).attr('refY', 0)
+    .attr('markerWidth', 6).attr('markerHeight', 6).attr('orient', 'auto')
+    .append('path').attr('d', 'M0,-5L10,0L0,5').attr('fill', '#d1d5db');
+
+  // Nodes
+  const node = g.append('g')
+    .selectAll('g').data(nodes).join('g')
+    .call(d3.drag()
+      .on('start', (event, d) => {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x; d.fy = d.y;
+      })
+      .on('drag', (event, d) => { d.fx = event.x; d.fy = event.y; })
+      .on('end', (event, d) => {
+        if (!event.active) simulation.alphaTarget(0);
+        d.fx = null; d.fy = null;
+      })
+    );
+
+  node.append('circle')
+    .attr('r', d => d.type === 'experiment' ? 10 : 7)
+    .attr('fill', d => colorMap[d.type] || '#9ca3af')
+    .attr('stroke', '#fff').attr('stroke-width', 2)
+    .attr('class', 'node-circle');
+
+  node.append('title').text(d => `${d.label} (${d.type})`);
+
+  node.append('text')
+    .attr('class', 'node-label')
+    .attr('dx', d => d.type === 'experiment' ? 14 : 12)
+    .attr('dy', 3)
+    .attr('font-size', '10px')
+    .attr('fill', '#374151')
+    .text(d => {
+      const maxLen = d.type === 'experiment' ? 24 : 18;
+      return d.label.length > maxLen ? d.label.substring(0, maxLen) + '…' : d.label;
+    });
+
+  // Hover tooltip
+  node.on('mouseenter', function(event, d) {
+    d3.select(this).select('circle').attr('stroke', '#6366f1').attr('stroke-width', 3);
+  }).on('mouseleave', function(event, d) {
+    d3.select(this).select('circle').attr('stroke', '#fff').attr('stroke-width', 2);
+  });
+
+  // Click to navigate (experiment nodes)
+  node.on('click', function(event, d) {
+    if (d.type === 'experiment') {
+      window.location = '/experiments/' + d.id;
+    }
+  }).style('cursor', d => d.type === 'experiment' ? 'pointer' : 'default');
+
+  simulation.on('tick', () => {
+    link.attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+      .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+    node.attr('transform', d => `translate(${d.x},${d.y})`);
+  });
+})();
+</script>
+
+{% endblock %}

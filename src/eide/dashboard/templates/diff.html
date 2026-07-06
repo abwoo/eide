@@ -1,0 +1,369 @@
+{% extends "base.html" %}
+{% block title %}Diff Experiments{% endblock %}
+{% block page_title %}Diff & Compare{% endblock %}
+{% block content %}
+
+<div class="card mb-6">
+  <form method="get" action="/diff" class="flex items-end gap-4 flex-wrap">
+    <div class="flex-1 min-w-[200px]">
+      <label class="block text-xs font-medium text-gray-600 mb-1.5">Experiment A (base)</label>
+      <select name="a" class="select text-sm" onchange="this.form.submit()">
+        <option value="">— Select base —</option>
+        {% for e in entries %}
+        <option value="{{ e.id }}" {% if selected_a == e.id %}selected{% endif %}>{{ e.name or '(unnamed)' }} ({{ e.id[:8] }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <svg class="w-5 h-5 text-gray-400 mb-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+    <div class="flex-1 min-w-[200px]">
+      <label class="block text-xs font-medium text-gray-600 mb-1.5">Experiment B (compare)</label>
+      <select name="b" class="select text-sm" onchange="this.form.submit()">
+        <option value="">— Select compare —</option>
+        {% for e in entries %}
+        <option value="{{ e.id }}" {% if selected_b == e.id %}selected{% endif %}>{{ e.name or '(unnamed)' }} ({{ e.id[:8] }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn-primary text-xs">Compare</button>
+  </form>
+</div>
+
+{% if report %}
+
+<!-- Summary bar -->
+<div class="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
+  <div class="card text-center py-3 col-span-2">
+    <div class="text-2xl font-bold text-gray-900">{{ report.changes|length }}</div>
+    <div class="text-xs text-gray-500">Total Changes</div>
+  </div>
+  {% set categories = {} %}
+  {% for c in report.changes %}
+  {% set _ = categories.update({c.category.value: categories.get(c.category.value, 0) + 1}) %}
+  {% endfor %}
+  {% for cat, cnt in categories.items() %}
+  <div class="card text-center py-3">
+    <div class="text-lg font-bold text-gray-900">{{ cnt }}</div>
+    <div class="text-xs text-gray-500 capitalize">{{ cat.replace('_', ' ') }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Intelligent Analysis (from Explain API) -->
+<div id="explain-section" class="card mb-6 hidden">
+  <div class="card-header">
+    <span class="flex items-center gap-2">
+      <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+      Intelligent Analysis
+    </span>
+  </div>
+  <div id="explain-content">
+    <div class="text-sm text-gray-400 py-4 text-center">Loading analysis...</div>
+  </div>
+</div>
+
+{% if not report.changes %}
+<div class="card text-center py-12">
+  <svg class="w-12 h-12 text-green-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+  <p class="text-green-600 font-medium">No differences found.</p>
+  <p class="text-gray-500 text-sm mt-1">The two experiments are identical.</p>
+</div>
+{% else %}
+
+<!-- Diff report sections -->
+{% set param_changes = report.changes|selectattr('category.value', 'equalto', 'PARAMETER')|list %}
+{% set struct_changes = report.changes|selectattr('category.value', 'equalto', 'STRUCTURAL')|list %}
+{% set metric_changes = report.changes|selectattr('category.value', 'equalto', 'OUTPUT')|list %}
+{% set env_changes = report.changes|selectattr('category.value', 'equalto', 'ENVIRONMENT')|list %}
+{% set data_changes = report.changes|selectattr('category.value', 'equalto', 'DATA_VERSION')|list %}
+
+<div class="space-y-6">
+
+  <!-- Side-by-side Parameter Diff -->
+  {% if param_changes %}
+  <div class="card">
+    <div class="card-header flex items-center justify-between">
+      <span>Parameter Changes</span>
+      <span class="badge bg-blue-50 text-blue-700 text-[10px]">{{ param_changes|length }}</span>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="diff-table">
+        <thead>
+          <tr>
+            <th style="width:40%">Parameter</th>
+            <th style="width:30%" class="text-red-600">A (base)</th>
+            <th style="width:30%" class="text-green-600">B (compare)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in param_changes %}
+          <tr>
+            <td class="font-mono font-medium text-gray-900">{{ c.key }}</td>
+            <td class="diff-cell-a font-mono">
+              {% if c.change_type.value == 'added' %}<span class="text-gray-400 italic">—</span>
+              {% else %}<span class="highlight-remove">{{ c.old_value }}</span>{% endif %}
+            </td>
+            <td class="diff-cell-b font-mono">
+              {% if c.change_type.value == 'removed' %}<span class="text-gray-400 italic">—</span>
+              {% else %}<span class="highlight-add">{{ c.new_value }}</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Pipeline / Structural Diff -->
+  {% if struct_changes %}
+  <div class="card">
+    <div class="card-header flex items-center justify-between">
+      <span>Pipeline Changes</span>
+      <span class="badge bg-purple-50 text-purple-700 text-[10px]">{{ struct_changes|length }}</span>
+    </div>
+    <div class="space-y-2">
+      {% for c in struct_changes %}
+      <div class="flex items-start gap-3 p-3 rounded-lg
+        {% if c.change_type.value == 'added' %}diff-add
+        {% elif c.change_type.value == 'removed' %}diff-remove
+        {% else %}diff-modify{% endif %}">
+        <span class="text-xs font-mono font-bold uppercase mt-0.5 w-14 flex-shrink-0
+          {% if c.change_type.value == 'added' %}text-green-600
+          {% elif c.change_type.value == 'removed' %}text-red-600
+          {% else %}text-blue-600{% endif %}">
+          {{ c.change_type.value }}
+        </span>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-medium text-gray-900">{{ c.key }}</div>
+          <div class="text-xs text-gray-600 mt-0.5">{{ c.description }}</div>
+        </div>
+        {% if c.significance > 0.5 %}
+        <span class="badge bg-yellow-50 text-yellow-700 text-[10px] flex-shrink-0">significant</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Metrics Diff -->
+  {% if metric_changes %}
+  <div class="card">
+    <div class="card-header flex items-center justify-between">
+      <span>Metrics Changes</span>
+      <span class="badge bg-green-50 text-green-700 text-[10px]">{{ metric_changes|length }}</span>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="diff-table">
+        <thead>
+          <tr>
+            <th>Metric</th>
+            <th class="text-red-600">A (base)</th>
+            <th class="text-green-600">B (compare)</th>
+            <th>Delta</th>
+            <th>% Change</th>
+            <th>Impact</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in metric_changes %}
+          <tr>
+            <td class="font-mono font-medium text-gray-900">{{ c.key.replace('metrics.', '') }}</td>
+            <td class="diff-cell-a font-mono">
+              {% if c.change_type.value == 'added' %}<span class="text-gray-400 italic">—</span>
+              {% else %}<span class="highlight-remove">{{ c.old_value }}</span>{% endif %}
+            </td>
+            <td class="diff-cell-b font-mono">
+              {% if c.change_type.value == 'removed' %}<span class="text-gray-400 italic">—</span>
+              {% else %}<span class="highlight-add">{{ c.new_value }}</span>{% endif %}
+            </td>
+            <td class="font-mono {% if c.delta and c.delta|float > 0 %}text-green-600{% elif c.delta and c.delta|float < 0 %}text-red-600{% else %}text-gray-500{% endif %}">
+              {{ c.delta or '—' }}
+            </td>
+            <td class="font-mono {% if c.delta and c.delta|float > 0 %}text-green-600{% elif c.delta and c.delta|float < 0 %}text-red-600{% endif %}">
+              {% if c.old_value and c.old_value|float != 0 %}
+                {{ ((c.new_value|float - c.old_value|float) / c.old_value|float * 100)|round(1) }}%
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td>
+              {% if c.significance > 0.7 %}
+              <span class="badge bg-red-50 text-red-700 text-[10px]">high</span>
+              {% elif c.significance > 0.4 %}
+              <span class="badge bg-yellow-50 text-yellow-700 text-[10px]">medium</span>
+              {% else %}
+              <span class="badge bg-gray-50 text-gray-500 text-[10px]">low</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Environment Diff -->
+  {% if env_changes %}
+  <div class="card">
+    <div class="card-header flex items-center justify-between">
+      <span>Environment Changes</span>
+      <span class="badge bg-amber-50 text-amber-700 text-[10px]">{{ env_changes|length }}</span>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="diff-table">
+        <thead>
+          <tr>
+            <th>Key</th>
+            <th class="text-red-600">A (base)</th>
+            <th class="text-green-600">B (compare)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in env_changes %}
+          <tr>
+            <td class="font-mono font-medium text-gray-900 text-xs">{{ c.key }}</td>
+            <td class="diff-cell-a font-mono text-xs">
+              {% if c.change_type.value == 'added' %}<span class="text-gray-400 italic">—</span>
+              {% else %}<span class="highlight-remove">{{ c.old_value }}</span>{% endif %}
+            </td>
+            <td class="diff-cell-b font-mono text-xs">
+              {% if c.change_type.value == 'removed' %}<span class="text-gray-400 italic">—</span>
+              {% else %}<span class="highlight-add">{{ c.new_value }}</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Data Version Changes -->
+  {% if data_changes %}
+  <div class="card">
+    <div class="card-header flex items-center justify-between">
+      <span>Data Version Changes</span>
+      <span class="badge bg-indigo-50 text-indigo-700 text-[10px]">{{ data_changes|length }}</span>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="diff-table">
+        <thead>
+          <tr>
+            <th>Key</th>
+            <th class="text-red-600">A (base)</th>
+            <th class="text-green-600">B (compare)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in data_changes %}
+          <tr>
+            <td class="font-mono font-medium text-gray-900">{{ c.key }}</td>
+            <td class="diff-cell-a font-mono">{{ c.old_value or '—' }}</td>
+            <td class="diff-cell-b font-mono">{{ c.new_value or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Full changelog -->
+  <div class="card">
+    <div class="card-header">Full Change Log</div>
+    <div class="space-y-1.5 max-h-64 overflow-y-auto scrollbar-thin">
+      {% for entry in report.changelog %}
+      <div class="text-xs font-mono text-gray-600 px-2 py-1 bg-gray-50 rounded">{{ entry }}</div>
+      {% else %}
+      <p class="text-gray-400 text-xs">No changelog entries.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+{% endif %}
+
+{% endif %}
+
+<!-- Explain API + Change Navigation JS -->
+<script>
+{% if report and selected_a and selected_b %}
+(async function() {
+  const expA = "{{ selected_a }}";
+  const expB = "{{ selected_b }}";
+  // Fetch explain data
+  try {
+    const resp = await fetch('/api/explain', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ exp_a: expA, exp_b: expB })
+    });
+    const data = await resp.json();
+    const section = document.getElementById('explain-section');
+    const content = document.getElementById('explain-content');
+    if (!section || !content) return;
+    section.classList.remove('hidden');
+    if (data.likely_causes && data.likely_causes.length > 0) {
+      let html = '<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">';
+      html += '<div><h4 class="text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Likely Causes</h4><div class="space-y-2">';
+      data.likely_causes.forEach(c => {
+        const pct = Math.round(c.confidence * 100);
+        const barColor = pct > 70 ? 'bg-red-500' : pct > 40 ? 'bg-yellow-500' : 'bg-blue-500';
+        html += '<div class="bg-gray-50 rounded-lg p-3 text-sm"><div class="flex items-center justify-between mb-1"><span class="font-medium text-gray-900">' + c.cause + '</span><span class="text-xs text-gray-500">' + pct + '%</span></div><div class="w-full bg-gray-200 rounded-full h-1.5 mb-1"><div class="' + barColor + ' h-1.5 rounded-full" style="width:' + pct + '%"></div></div><div class="text-xs text-gray-600">' + c.reasoning + '</div></div>';
+      });
+      html += '</div></div>';
+      html += '<div><h4 class="text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Recommended Actions</h4><div class="space-y-2">';
+      if (data.recommended_actions) {
+        data.recommended_actions.forEach(a => {
+          const prioColor = a.priority === 'high' ? 'text-red-600 bg-red-50' : a.priority === 'medium' ? 'text-yellow-600 bg-yellow-50' : 'text-gray-500 bg-gray-50';
+          html += '<div class="' + prioColor + ' rounded-lg px-3 py-2 text-sm flex items-start gap-2"><span class="text-xs font-semibold uppercase mt-0.5">' + a.type + '</span><span>' + a.message + '</span></div>';
+        });
+      } else {
+        html += '<p class="text-sm text-gray-400">No specific recommendations.</p>';
+      }
+      html += '</div></div></div>';
+      content.innerHTML = html;
+    } else {
+      content.innerHTML = '<p class="text-sm text-gray-500">No significant causes identified.</p>';
+    }
+  } catch(e) {
+    const section = document.getElementById('explain-section');
+    if (section) section.classList.add('hidden');
+  }
+
+  // Change navigation (VSCode diff style)
+  const cards = document.querySelectorAll('.card .diff-add, .card .diff-remove, .card .diff-modify');
+  if (cards.length > 1) {
+    const nav = document.createElement('div');
+    nav.className = 'flex items-center gap-2 mb-4';
+    nav.innerHTML = '<span class="text-xs text-gray-500 mr-2">Navigate changes:</span>' +
+      '<button onclick="scrollToPrevChange(event)" class="btn-secondary text-xs px-2 py-1">← Prev</button>' +
+      '<button onclick="scrollToNextChange(event)" class="btn-secondary text-xs px-2 py-1">Next →</button>' +
+      '<span class="text-xs text-gray-400 ml-2" id="change-counter">1/' + cards.length + '</span>';
+    document.querySelector('.card .card-header').parentNode.insertBefore(nav, document.querySelector('.card .card-header').parentNode.firstChild);
+
+    let currentChange = 0;
+    window.scrollToNextChange = function(e) {
+      if (e) e.preventDefault();
+      currentChange = (currentChange + 1) % cards.length;
+      cards[currentChange].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      cards[currentChange].style.outline = '2px solid #6366f1';
+      setTimeout(() => { cards[currentChange].style.outline = ''; }, 2000);
+      document.getElementById('change-counter').textContent = (currentChange + 1) + '/' + cards.length;
+    };
+    window.scrollToPrevChange = function(e) {
+      if (e) e.preventDefault();
+      currentChange = (currentChange - 1 + cards.length) % cards.length;
+      cards[currentChange].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      cards[currentChange].style.outline = '2px solid #6366f1';
+      setTimeout(() => { cards[currentChange].style.outline = ''; }, 2000);
+      document.getElementById('change-counter').textContent = (currentChange + 1) + '/' + cards.length;
+    };
+  }
+})();
+{% endif %}
+</script>
+
+{% endblock %}
