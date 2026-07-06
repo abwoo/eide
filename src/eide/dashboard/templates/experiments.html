@@ -33,9 +33,9 @@
 {% endfor %}
 <div class="flex flex-wrap gap-2 mb-4">
   <span class="text-xs text-gray-500 font-medium mr-1 self-center">Projects:</span>
-  <button onclick="filterByProject('')" class="badge bg-gray-100 text-gray-700 text-xs cursor-pointer hover:bg-gray-200 active">all ({{ entries|length }})</button>
+  <button onclick="filterByProject(this)" data-project="" class="badge bg-gray-100 text-gray-700 text-xs cursor-pointer hover:bg-gray-200 active">all ({{ entries|length }})</button>
   {% for pname, pcount in projects.items()|sort %}
-  <button onclick="filterByProject('{{ pname }}')" class="badge bg-purple-50 text-purple-700 text-xs cursor-pointer hover:bg-purple-100" data-project="{{ pname }}">{{ pname }} ({{ pcount }})</button>
+  <button onclick="filterByProject(this)" class="badge bg-purple-50 text-purple-700 text-xs cursor-pointer hover:bg-purple-100" data-project="{{ pname|e }}">{{ pname }} ({{ pcount }})</button>
   {% endfor %}
 </div>
 
@@ -55,7 +55,7 @@
     </thead>
     <tbody>
       {% for entry in entries %}
-      <tr class="cursor-pointer experiment-row" onclick="window.location='/experiments/{{ entry.id }}'" data-project="{{ entry.get('project') or '(no project)' }}">
+      <tr class="cursor-pointer experiment-row" onclick="window.location='/experiments/{{ entry.id }}'" data-project="{{ (entry.get('project') or '(no project)')|e }}">
         <td>
           <a href="/experiments/{{ entry.id }}" class="font-medium text-gray-900 hover:text-indigo-600">{{ entry.name or '(unnamed)' }}</a>
         </td>
@@ -90,16 +90,14 @@
 
 <script>
 // Project filter
-window.filterByProject = function(project) {
-  document.querySelectorAll('[data-project]').forEach(btn => {
-    btn.classList.remove('bg-purple-100', 'active');
-    btn.classList.add('bg-purple-50');
+window.filterByProject = function(btn) {
+  const project = btn.dataset.project;
+  document.querySelectorAll('[data-project]').forEach(b => {
+    b.classList.remove('bg-purple-100', 'active');
+    b.classList.add('bg-purple-50');
   });
-  const active = document.querySelector('[data-project="' + project.replace(/"/g, '') + '"]') || document.querySelector('[data-project=""]') || document.querySelector('button:first-of-type');
-  if (active) {
-    active.classList.remove('bg-purple-50');
-    active.classList.add('bg-purple-100', 'active');
-  }
+  btn.classList.remove('bg-purple-50');
+  btn.classList.add('bg-purple-100', 'active');
   document.querySelectorAll('.experiment-row').forEach(row => {
     if (!project || row.dataset.project === project) {
       row.style.display = '';

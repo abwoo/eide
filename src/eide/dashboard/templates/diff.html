@@ -78,6 +78,8 @@
 
 <div class="space-y-6">
 
+  <span id="diff-changes-start"></span>
+
   <!-- Side-by-side Parameter Diff -->
   {% if param_changes %}
   <div class="card">
@@ -96,7 +98,7 @@
         </thead>
         <tbody>
           {% for c in param_changes %}
-          <tr>
+          <tr class="diff-change-row">
             <td class="font-mono font-medium text-gray-900">{{ c.key }}</td>
             <td class="diff-cell-a font-mono">
               {% if c.change_type.value == 'added' %}<span class="text-gray-400 italic">—</span>
@@ -167,7 +169,7 @@
         </thead>
         <tbody>
           {% for c in metric_changes %}
-          <tr>
+          <tr class="diff-change-row">
             <td class="font-mono font-medium text-gray-900">{{ c.key.replace('metrics.', '') }}</td>
             <td class="diff-cell-a font-mono">
               {% if c.change_type.value == 'added' %}<span class="text-gray-400 italic">—</span>
@@ -222,7 +224,7 @@
         </thead>
         <tbody>
           {% for c in env_changes %}
-          <tr>
+          <tr class="diff-change-row">
             <td class="font-mono font-medium text-gray-900 text-xs">{{ c.key }}</td>
             <td class="diff-cell-a font-mono text-xs">
               {% if c.change_type.value == 'added' %}<span class="text-gray-400 italic">—</span>
@@ -258,7 +260,7 @@
         </thead>
         <tbody>
           {% for c in data_changes %}
-          <tr>
+          <tr class="diff-change-row">
             <td class="font-mono font-medium text-gray-900">{{ c.key }}</td>
             <td class="diff-cell-a font-mono">{{ c.old_value or '—' }}</td>
             <td class="diff-cell-b font-mono">{{ c.new_value or '—' }}</td>
@@ -334,32 +336,32 @@
   }
 
   // Change navigation (VSCode diff style)
-  const cards = document.querySelectorAll('.card .diff-add, .card .diff-remove, .card .diff-modify');
-  if (cards.length > 1) {
+  const changeCards = document.querySelectorAll('.diff-add, .diff-remove, .diff-modify, .diff-change-row');
+  if (changeCards.length > 1) {
     const nav = document.createElement('div');
-    nav.className = 'flex items-center gap-2 mb-4';
+    nav.className = 'flex items-center gap-2 mb-6';
     nav.innerHTML = '<span class="text-xs text-gray-500 mr-2">Navigate changes:</span>' +
       '<button onclick="scrollToPrevChange(event)" class="btn-secondary text-xs px-2 py-1">← Prev</button>' +
       '<button onclick="scrollToNextChange(event)" class="btn-secondary text-xs px-2 py-1">Next →</button>' +
-      '<span class="text-xs text-gray-400 ml-2" id="change-counter">1/' + cards.length + '</span>';
-    document.querySelector('.card .card-header').parentNode.insertBefore(nav, document.querySelector('.card .card-header').parentNode.firstChild);
+      '<span class="text-xs text-gray-400 ml-2" id="change-counter">1/' + changeCards.length + '</span>';
+    document.getElementById('diff-changes-start').insertAdjacentElement('beforebegin', nav);
 
     let currentChange = 0;
     window.scrollToNextChange = function(e) {
       if (e) e.preventDefault();
-      currentChange = (currentChange + 1) % cards.length;
-      cards[currentChange].scrollIntoView({ behavior: 'smooth', block: 'center' });
-      cards[currentChange].style.outline = '2px solid #6366f1';
-      setTimeout(() => { cards[currentChange].style.outline = ''; }, 2000);
-      document.getElementById('change-counter').textContent = (currentChange + 1) + '/' + cards.length;
+      currentChange = (currentChange + 1) % changeCards.length;
+      changeCards[currentChange].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      changeCards[currentChange].style.outline = '2px solid #6366f1';
+      setTimeout(() => { changeCards[currentChange].style.outline = ''; }, 2000);
+      document.getElementById('change-counter').textContent = (currentChange + 1) + '/' + changeCards.length;
     };
     window.scrollToPrevChange = function(e) {
       if (e) e.preventDefault();
-      currentChange = (currentChange - 1 + cards.length) % cards.length;
-      cards[currentChange].scrollIntoView({ behavior: 'smooth', block: 'center' });
-      cards[currentChange].style.outline = '2px solid #6366f1';
-      setTimeout(() => { cards[currentChange].style.outline = ''; }, 2000);
-      document.getElementById('change-counter').textContent = (currentChange + 1) + '/' + cards.length;
+      currentChange = (currentChange - 1 + changeCards.length) % changeCards.length;
+      changeCards[currentChange].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      changeCards[currentChange].style.outline = '2px solid #6366f1';
+      setTimeout(() => { changeCards[currentChange].style.outline = ''; }, 2000);
+      document.getElementById('change-counter').textContent = (currentChange + 1) + '/' + changeCards.length;
     };
   }
 })();

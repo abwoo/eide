@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "eide-core"
-version = "0.1.0"
+version = "1.0.0"
 description = "Experiment Intelligence & Diff Engine - understand why experiments differ"
 readme = "README.md"
 license = { text = "MIT" }
