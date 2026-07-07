@@ -98,7 +98,7 @@ eide serve
 
 ```python
 from eide import ExperimentIR, FileStore, track, ExperimentContext
-from eide.diff.engine import diff_experiments
+from eide.diff.engine import DiffEngine
 from eide.intelligence.advisor import ExperimentAdvisor
 
 # Auto-capture decorator
@@ -119,7 +119,8 @@ from eide.capture.manual import capture_manual
 exp = capture_manual(name="run", project="my-project", parameters={"lr": 0.01})
 
 # Diff
-report = diff_experiments(exp_a, exp_b)
+engine = DiffEngine()
+report = engine.diff(exp_a, exp_b)
 print(report.changelog)
 
 # Intelligent comparison
@@ -130,36 +131,38 @@ print(insight.recommended_actions)
 
 ## All CLI Commands
 
-| Command | Description |
-|---|---|
-| `eide init` | Initialize experiment store |
-| `eide create [--project] [--diff]` | Create experiment |
-| `eide list [--tag] [--project]` | List experiments with optional filter |
-| `eide show <id>` | Show experiment details |
-| `eide delete <id>` | Delete experiment |
-| `eide search <query> [--field] [--json]` | Search experiments by keyword |
-| `eide tag add/remove/list <id>` | Manage experiment tags |
-| `eide diff <a> <b> [--format]` | Diff two experiments |
-| `eide capture manual [--project] [--diff]` | Manually capture experiment |
-| `eide capture mlflow <run> [--name] [--project]` | Capture MLflow run |
-| `eide run <config.yml> [--diff] [--dry-run]` | Run from YAML experiment config |
-| `eide export <id> <path>` | Export experiment as JSON file |
-| `eide import <path> [--id]` | Import experiment from JSON file |
-| `eide explain <a> <b>` | Explain why experiments differ |
-| `eide replay <id>` | Replay experiment (verify reproducibility) |
-| `eide graph build` | Build knowledge graph |
-| `eide graph duplicates <id>` | Find duplicate experiments |
-| `eide graph conflicts <id>` | Find experiments with conflicting results |
-| `eide graph lineage <id>` | Show replay lineage |
-| `eide graph top-params` | Show most used parameters |
-| `eide graph param-impact <key>` | Parameter-metric correlation |
-| `eide advise compare <a> <b>` | Intelligent comparison with recommendations |
-| `eide advise risk <id>` | Assess experiment risk |
-| `eide advise baseline <id>` | Find best baseline for comparison |
-| `eide serve` | Start MCP server (port 8080) |
-| `eide dashboard [--port] [--host]` | Start web dashboard (port 8765) |
-
 All commands support `--root <path>` to specify a custom store location.
+
+| Command | Arguments | Options | Description |
+|---|---|---|---|
+| `eide init` | — | `--root` | Initialize experiment store |
+| `eide create` | — | `--name`, `--project`, `--tag` (multiple), `--diff`, `--root` | Create experiment |
+| `eide list` | — | `--tag` (multiple), `--project`, `--root` | List experiments |
+| `eide show` | `<id>` | `--root` | Show experiment details |
+| `eide delete` | `<id>` | `--root` | Delete experiment |
+| `eide search` | `<query>` | `--field` (name/tag/param/metadata/id/all), `--json`, `--root` | Search experiments |
+| `eide tag add` | `<id>` `<key>` `<value>` | `--root` | Add a tag |
+| `eide tag remove` | `<id>` `<key>` | `--root` | Remove a tag |
+| `eide tag list` | `<id>` | `--root` | List tags |
+| `eide diff` | `<a>` `<b>` | `--format` (text/json), `--artifacts`, `--root` | Diff two experiments |
+| `eide capture manual` | — | `--name`, `--description`, `--project`, `--param`, `--metric`, `--tag`, `--step`, `--data-version`, `--decision`, `--metadata`, `--diff`, `--root` | Manually capture experiment |
+| `eide capture mlflow` | `<run_id>` | `--name`, `--project`, `--root` | Capture MLflow run |
+| `eide run` | `<config.yml>` | `--diff`, `--dry-run`, `--root` | Run from YAML config |
+| `eide export` | `<id>` `<path>` | `--pretty`, `--root` | Export as JSON |
+| `eide import-exp` | `<path>` | `--id` (override), `--root` | Import from JSON |
+| `eide explain` | `<a>` `<b>` | `--root` | Explain differences |
+| `eide replay` | `<id>` | `--no-env`, `--no-data`, `--no-save`, `--artifacts`, `--work-dir`, `--root` | Replay experiment |
+| `eide graph build` | — | `--max`, `--save`, `--root` | Build knowledge graph |
+| `eide graph duplicates` | `<id>` | `--save`, `--root` | Find duplicates |
+| `eide graph conflicts` | `<id>` | `--save`, `--root` | Find conflicts |
+| `eide graph lineage` | `<id>` | `--save`, `--root` | Show lineage |
+| `eide graph top-params` | — | `--top` (default 10), `--save`, `--root` | Most used parameters |
+| `eide graph param-impact` | `<key>` | `--save`, `--root` | Parameter-metric correlation |
+| `eide advise compare` | `<a>` `<b>` | `--root` | Intelligent comparison |
+| `eide advise risk` | `<id>` | `--root` | Assess risk |
+| `eide advise baseline` | `<id>` | `--root` | Find best baseline |
+| `eide serve` | — | `--host` (127.0.0.1), `--port` (8080), `--root` | Start MCP server |
+| `eide dashboard` | — | `--host` (127.0.0.1), `--port` (8765), `--root` | Start web dashboard |
 
 ## Architecture
 
@@ -200,7 +203,7 @@ EIDE exposes all capabilities via the Model Context Protocol (MCP).
 eide serve
 ```
 
-Available tools: `eide_capture`, `eide_diff`, `eide_explain`, `eide_list`, `eide_show`, `eide_delete`, `eide_search`, `eide_replay`, `eide_graph_*` (duplicates, conflicts, lineage, top_params), `eide_advise_*` (risk, baseline)
+Available tools: `eide_capture`, `eide_diff`, `eide_explain`, `eide_list`, `eide_show`, `eide_delete`, `eide_search`, `eide_replay`, `eide_graph_duplicates`, `eide_graph_conflicts`, `eide_graph_lineage`, `eide_graph_top_params`, `eide_graph_param_impact`, `eide_advise_risk`, `eide_advise_baseline`
 
 Available resources: `eide://experiments` (list), `eide://experiments/{id}` (detail)
 

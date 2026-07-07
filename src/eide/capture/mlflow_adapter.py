@@ -4,13 +4,18 @@ from eide.capture.base import CaptureAdapter
 from eide.core.ir import ExperimentIR
 from eide.core.types import EnvironmentInfo, ExperimentOutputs
 
+try:
+    import mlflow
+except ImportError:
+    mlflow = None  # type: ignore
+
 
 class MLflowCapture(CaptureAdapter):
     def capture(self, run_id: str | None = None, **kwargs) -> ExperimentIR:
-        try:
-            import mlflow
-        except ImportError:
+        if mlflow is None:
             raise ImportError("mlflow is required. Install: pip install eide-core[mlflow]")
+        if run_id is None:
+            raise ValueError("run_id is required")
 
         client = mlflow.tracking.MlflowClient()
         run = client.get_run(run_id)

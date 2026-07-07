@@ -29,7 +29,9 @@ def run(config_file: str, root: str | None, diff: bool, dry_run: bool):
         parameters=raw.get("parameters", {}),
         metrics={k: float(v) for k, v in raw.get("metrics", {}).items()},
         tags=raw.get("tags", {}),
-        pipeline_steps=raw.get("pipeline", []),
+        pipeline_steps=raw.get("pipeline", {}).get("steps")
+        if isinstance(raw.get("pipeline"), dict)
+        else raw.get("pipeline"),
         data_versions=raw.get("data_versions", {}),
         decisions=raw.get("decisions", {}),
         metadata=raw.get("metadata", {}),
@@ -45,10 +47,14 @@ def run(config_file: str, root: str | None, diff: bool, dry_run: bool):
 
     store = FileStore(root or os.environ.get("EIDE_ROOT", ".eide"))
     store.save(exp)
-    console.print(f"[green]✔ Created experiment [bold]{exp.id}[/bold] from [bold]{config_file}[/bold][/green]")
+    console.print(
+        f"[green]✔ Created experiment [bold]{exp.id}[/bold] from [bold]{config_file}[/bold][/green]"
+    )
 
     if diff:
         result = store.diff_with_baseline(exp.id)
         if result:
-            console.print(f"\n[bold]Auto-diff with baseline [dim]{result['baseline_id'][:12]}[/dim]:[/bold]")
+            console.print(
+                f"\n[bold]Auto-diff with baseline [dim]{result['baseline_id'][:12]}[/dim]:[/bold]"
+            )
             console.print(f"  [dim]{result['summary']}[/dim]")

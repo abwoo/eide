@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Create Experiment{% endblock %}
+{% block page_title %}Create Experiment{% endblock %}
+{% block content %}
+
+<div class="max-w-2xl mx-auto">
+  <div class="card p-6">
+    <p class="text-xs text-[#64748b] mb-6">Create a new experiment to track, compare, and analyze. Fields marked with * are required.</p>
+
+    <form id="create-form" class="space-y-5" onsubmit="return submitCreate(event)">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-medium text-[#475569] mb-1">Name *</label>
+          <input type="text" id="field-name" class="input text-sm" placeholder="e.g. training-run-v3" required>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[#475569] mb-1">Project</label>
+          <div class="flex gap-2">
+            <input type="text" id="field-project" class="input text-sm flex-1" placeholder="e.g. nlp-project" list="project-list">
+            <datalist id="project-list">
+              {% for p in projects %}
+              <option value="{{ p }}">
+              {% endfor %}
+            </datalist>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-[#475569] mb-1">Description</label>
+        <textarea id="field-description" class="input text-sm" rows="2" placeholder="Optional description..."></textarea>
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-[#475569] mb-1">Parameters (comma-separated key=value pairs)</label>
+        <input type="text" id="field-params" class="input text-sm font-mono" placeholder="lr=0.01, batch_size=64, epochs=10">
+        <p class="text-[10px] text-[#94a3b8] mt-1">e.g. <code>lr=0.01, batch_size=64, epochs=10</code></p>
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-[#475569] mb-1">Metrics (comma-separated key=value pairs)</label>
+        <input type="text" id="field-metrics" class="input text-sm font-mono" placeholder="accuracy=0.912, loss=0.312">
+        <p class="text-[10px] text-[#94a3b8] mt-1">e.g. <code>accuracy=0.912, loss=0.312</code></p>
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-[#475569] mb-1">Tags (comma-separated key=value pairs)</label>
+        <input type="text" id="field-tags" class="input text-sm font-mono" placeholder="model=cnn, dataset=cifar10">
+        <p class="text-[10px] text-[#94a3b8] mt-1">e.g. <code>model=cnn, dataset=cifar10</code></p>
+      </div>
+
+      <div class="flex items-center gap-3 pt-2">
+        <button type="submit" class="btn btn-primary text-sm" id="submit-btn">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          Create Experiment
+        </button>
+        <a href="/experiments" class="btn btn-secondary text-sm">Cancel</a>
+      </div>
+
+      <div id="create-result" class="hidden"></div>
+    </form>
+  </div>
+</div>
+
+<script>
+async function submitCreate(event) {
+  event.preventDefault();
+  const btn = document.getElementById('submit-btn');
+  const result = document.getElementById('create-result');
+  btn.disabled = true;
+  btn.innerHTML = 'Creating...';
+  result.className = 'hidden';
+
+  const formData = new FormData();
+  formData.append('name', document.getElementById('field-name').value);
+  formData.append('project', document.getElementById('field-project').value);
+  formData.append('description', document.getElementById('field-description').value);
+  formData.append('params', document.getElementById('field-params').value);
+  formData.append('metrics', document.getElementById('field-metrics').value);
+  formData.append('tags', document.getElementById('field-tags').value);
+
+  try {
+    const resp = await fetch('/api/create', { method: 'POST', body: formData });
+    const data = await resp.json();
+    if (resp.ok) {
+      result.className = 'mt-4 p-3 rounded-lg bg-green-50 text-green-700 text-sm flex items-center gap-2';
+      result.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>'
+        + 'Experiment <strong>' + data.name + '</strong> created! '
+        + '<a href="/experiments/' + data.id + '" class="underline ml-2">View →</a>';
+    } else {
+      result.className = 'mt-4 p-3 rounded-lg bg-red-50 text-red-700 text-sm';
+      result.textContent = 'Error: ' + (data.detail || 'Unknown error');
+    }
+  } catch(e) {
+    result.className = 'mt-4 p-3 rounded-lg bg-red-50 text-red-700 text-sm';
+    result.textContent = 'Network error: ' + e.message;
+  }
+  result.classList.remove('hidden');
+  btn.disabled = false;
+  btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg> Create Experiment';
+  return false;
+}
+</script>
+{% endblock %}

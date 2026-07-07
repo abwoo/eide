@@ -23,7 +23,9 @@ class ReplayEngine:
     ):
         self.store = store
         self.artifacts_root = Path(artifacts_root) if artifacts_root else None
-        self.work_dir = Path(work_dir) if work_dir else Path(tempfile.mkdtemp(prefix="eide_replay_"))
+        self.work_dir = (
+            Path(work_dir) if work_dir else Path(tempfile.mkdtemp(prefix="eide_replay_"))
+        )
         self.env_manager = EnvironmentManager(self.work_dir)
         self._setup_dirs()
 
@@ -41,7 +43,12 @@ class ReplayEngine:
         """Replay an experiment and compare with the original."""
         env_restored = False
         if restore_environment and experiment.environment.packages:
-            print(f"[replay] Restoring environment ({len(experiment.environment.packages)} packages)...")
+            print(
+                (
+                    f"[replay] Restoring environment"
+                    f" ({len(experiment.environment.packages)} packages)..."
+                )
+            )
             self.env_manager.restore(experiment.environment)
             env_restored = True
 
@@ -69,11 +76,14 @@ class ReplayEngine:
 
         for sr in step_results:
             from eide.core.types import TraceEvent
-            replay_exp.execution_trace.append(TraceEvent(
-                step=sr["step_name"],
-                action="replay_execute",
-                details=sr,
-            ))
+
+            replay_exp.execution_trace.append(
+                TraceEvent(
+                    step=sr["step_name"],
+                    action="replay_execute",
+                    details=sr,
+                )
+            )
 
         replay_exp.outputs.files = {}
         outputs_dir = self.work_dir / "outputs"
@@ -84,7 +94,8 @@ class ReplayEngine:
 
         if self.artifacts_root:
             replay_exp.outputs.figures = [
-                str(f) for f in self.artifacts_root.iterdir()
+                str(f)
+                for f in self.artifacts_root.iterdir()
                 if f.suffix.lower() in (".png", ".jpg", ".jpeg", ".pdf", ".svg")
             ]
 
@@ -93,7 +104,9 @@ class ReplayEngine:
             print(f"[replay] Saved replay as experiment {replay_exp.id}")
 
         print("[replay] Verifying replay against original...")
-        verifier = ReplayVerifier(artifacts_root=str(self.artifacts_root) if self.artifacts_root else None)
+        verifier = ReplayVerifier(
+            artifacts_root=str(self.artifacts_root) if self.artifacts_root else None
+        )
         verdict = verifier.verify(experiment, replay_exp)
 
         return ReplayResult(

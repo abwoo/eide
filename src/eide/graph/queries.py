@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import networkx as nx
 
 from eide.graph.builder import ExperimentGraph
@@ -31,8 +33,10 @@ class GraphQuery:
 
     def lineage(self, experiment_id: str) -> list[dict]:
         """Get the replay lineage (chain of derived_from)."""
-        chain = []
-        current = experiment_id
+        if experiment_id not in self.g:
+            return []
+        chain: list[dict[str, Any]] = []
+        current: str | None = experiment_id
         visited = set()
         while current and current not in visited:
             visited.add(current)
@@ -119,9 +123,13 @@ class GraphQuery:
                 val = data.get("value", "")
                 if key:
                     param_values.setdefault(key, set()).add(val)
+        sorted_items: list[dict[str, Any]] = [
+            {"key": k, "unique_values": len(v), "values": list(v)} for k, v in param_values.items()
+        ]
         sorted_params = sorted(
-            [{"key": k, "unique_values": len(v), "values": list(v)} for k, v in param_values.items()],
-            key=lambda x: x["unique_values"], reverse=True,
+            sorted_items,
+            key=lambda x: x["unique_values"],
+            reverse=True,
         )
         return sorted_params[:top_n]
 

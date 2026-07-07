@@ -21,9 +21,18 @@ DEFAULT_EIDE_ROOT = os.environ.get("EIDE_ROOT", ".eide")
 @click.option("--no-save", is_flag=True, help="Don't save replay result")
 @click.option("--artifacts", default=None, help="Artifacts root path")
 @click.option("--work-dir", default=None, help="Working directory for replay")
-def replay(experiment_id: str, no_env: bool, no_data: bool, no_save: bool, artifacts: str | None, work_dir: str | None):
+@click.option("--root", default=None, help="EIDE store root")
+def replay(
+    experiment_id: str,
+    no_env: bool,
+    no_data: bool,
+    no_save: bool,
+    artifacts: str | None,
+    work_dir: str | None,
+    root: str | None,
+):
     """Replay an experiment and verify reproducibility"""
-    store = FileStore(DEFAULT_EIDE_ROOT)
+    store = FileStore(root or DEFAULT_EIDE_ROOT)
 
     try:
         experiment = store.load(experiment_id)
@@ -73,7 +82,7 @@ def replay(experiment_id: str, no_env: bool, no_data: bool, no_save: bool, artif
             status = "[green]✔[/green]" if sr.get("success") else "[red]✖[/red]"
             table.add_row(
                 sr["step_name"],
-                f'{sr.get("duration_seconds", 0):.1f}s',
+                f"{sr.get('duration_seconds', 0):.1f}s",
                 status,
             )
         console.print(table)

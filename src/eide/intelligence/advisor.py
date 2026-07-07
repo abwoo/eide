@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from eide.causal.attribution import CausalAttribution
 from eide.core.diff import DiffCategory
 from eide.core.ir import ExperimentIR
@@ -77,25 +79,32 @@ class ExperimentAdvisor:
             return RiskAssessment(experiment_id=experiment.id, risk_level="unknown")
 
         q = GraphQuery(eg)
-        risks = []
+        risks: list[dict[str, Any]] = []
 
         if "replay_of" in experiment.tags:
-            risks.append({
-                "type": "replay",
-                "severity": "info",
-                "message": "This is a replay of another experiment",
-            })
+            risks.append(
+                {
+                    "type": "replay",
+                    "severity": "info",
+                    "message": "This is a replay of another experiment",
+                }
+            )
 
         for key, value in experiment.parameters.items():
             impact = q.parameter_impact(key)
             if len(impact) > 1:
-                risks.append({
-                    "type": "parameter_volatility",
-                    "severity": "warning" if len(impact) > 2 else "info",
-                    "message": f"Parameter '{key}' has {len(impact)} different values across experiments",
-                    "parameter": key,
-                    "values_count": len(impact),
-                })
+                risks.append(
+                    {
+                        "type": "parameter_volatility",
+                        "severity": "warning" if len(impact) > 2 else "info",
+                        "message": (
+                            f"Parameter '{key}' has {len(impact)}"
+                            f" different values across experiments"
+                        ),
+                        "parameter": key,
+                        "values_count": len(impact),
+                    }
+                )
 
         risk_level = "low"
         warnings = [r for r in risks if r["severity"] == "warning"]
@@ -112,44 +121,65 @@ class ExperimentAdvisor:
 
     def _generate_actions(self, report, exp_a, exp_b) -> list[dict]:
         actions = []
-        metric_changes = [c for c in report.changes if c.category == DiffCategory.OUTPUT
-                         and c.key.startswith("metrics.")]
+        metric_changes = [
+            c
+            for c in report.changes
+            if c.category == DiffCategory.OUTPUT and c.key.startswith("metrics.")
+        ]
         param_changes = [c for c in report.changes if c.category == DiffCategory.PARAMETER]
 
         if metric_changes and param_changes:
             top_metric = max(metric_changes, key=lambda c: abs(c.significance))
             top_param = max(param_changes, key=lambda c: abs(c.significance))
             key_metric = top_metric.key.replace("metrics.", "")
-            actions.append({
-                "type": "investigate",
-                "priority": "high",
-                "message": f"Metric '{key_metric}' changed by {abs(top_metric.new_value - top_metric.old_value):.4f}. "
-                           f"Likely related to parameter '{top_param.key}' change.",
-            })
+            old_v = top_metric.old_value if top_metric.old_value is not None else 0
+            new_v = top_metric.new_value if top_metric.new_value is not None else 0
+            actions.append(
+                {
+                    "type": "investigate",
+                    "priority": "high",
+                    "message": f"Metric '{key_metric}' changed by {abs(new_v - old_v):.4f}. "
+                    f"Likely related to parameter '{top_param.key}' change.",
+                }
+            )
 
         if metric_changes:
             for mc in metric_changes:
                 key = mc.key.replace("metrics.", "")
-                actions.append({
-                    "type": "verify",
-                    "priority": "medium",
-                    "message": f"Verify if '{key}' change ({mc.old_value} -> {mc.new_value}) is expected.",
-                })
+                actions.append(
+                    {
+                        "type": "verify",
+                        "priority": "medium",
+                        "message": (
+                            f"Verify if '{key}' change"
+                            f" ({mc.old_value} -> {mc.new_value}) is expected."
+                        ),
+                    }
+                )
 
         if not actions:
-            actions.append({
-                "type": "ok",
-                "priority": "low",
-                "message": "No significant changes detected.",
-            })
+            actions.append(
+                {
+                    "type": "ok",
+                    "priority": "low",
+                    "message": "No significant changes detected.",
+                }
+            )
 
         return actions
 
 
 class ComparisonInsight:
-    def __init__(self, experiment_a: str, experiment_b: str, diff_summary: str,
-                 changes: list, likely_causes: list, impact_estimates: list,
-                 recommended_actions: list):
+    def __init__(
+        self,
+        experiment_a: str,
+        experiment_b: str,
+        diff_summary: str,
+        changes: list,
+        likely_causes: list,
+        impact_estimates: list,
+        recommended_actions: list,
+    ):
         self.experiment_a = experiment_a
         self.experiment_b = experiment_b
         self.diff_summary = diff_summary
@@ -170,8 +200,13 @@ class ComparisonInsight:
 
 
 class BaselineRecommendation:
-    def __init__(self, target_id: str, best_match: dict | None = None,
-                 significant_differences: list | None = None, message: str = ""):
+    def __init__(
+        self,
+        target_id: str,
+        best_match: dict | None = None,
+        significant_differences: list | None = None,
+        message: str = "",
+    ):
         self.target_id = target_id
         self.best_match = best_match
         self.significant_differences = significant_differences or []
@@ -179,8 +214,9 @@ class BaselineRecommendation:
 
 
 class RiskAssessment:
-    def __init__(self, experiment_id: str, risk_level: str = "low",
-                 risks: list[dict] | None = None):
+    def __init__(
+        self, experiment_id: str, risk_level: str = "low", risks: list[dict] | None = None
+    ):
         self.experiment_id = experiment_id
         self.risk_level = risk_level
         self.risks = risks or []

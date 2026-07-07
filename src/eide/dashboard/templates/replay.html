@@ -4,207 +4,125 @@
 {% block content %}
 
 <div class="mb-6">
-  <a href="/experiments/{{ exp.id }}" class="text-xs text-indigo-600 hover:underline mb-2 inline-block">← Back to experiment</a>
+  <a href="/experiments/{{ exp.id }}" class="text-[10px] text-indigo-600 hover:underline mb-2 inline-block">← Back to experiment</a>
   <div class="flex items-center gap-3">
-    <h1 class="text-xl font-bold text-gray-900">Replay</h1>
-    <span class="text-gray-400 text-sm font-mono">{{ exp.id[:12] }}</span>
-    <span class="text-gray-500 text-sm">— {{ exp.name or '(unnamed)' }}</span>
+    <h1 class="text-lg font-bold text-[#0f172a]">Replay</h1>
+    <span class="text-[#94a3b8] text-xs font-mono">{{ exp.id[:12] }}</span>
+    <span class="text-[#64748b] text-xs">— {{ exp.name or '(unnamed)' }}</span>
   </div>
 </div>
 
 <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-
-  <!-- Main replay timeline -->
-  <div class="xl:col-span-2 space-y-6">
-
-    <!-- Replay steps (LangSmith trace style) -->
-    <div class="card">
+  <div class="xl:col-span-2 space-y-4">
+    <div class="card p-4">
       <div class="card-header">Replay Configuration</div>
-      <div class="space-y-3">
-        <div class="flex items-center gap-4 p-3.5 bg-gray-50 rounded-lg border border-gray-100">
-          <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-            <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+      <div class="space-y-2">
+        <div class="flex items-center gap-3 p-3 bg-[#f8fafc] rounded-lg border border-[#e9edf2]">
+          <div class="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+            <svg class="w-3.5 h-3.5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
           </div>
           <div class="flex-1">
-            <div class="text-sm font-medium text-gray-900">Restore Environment</div>
-            <div class="text-xs text-gray-500">Recreate the exact Python venv with all packages</div>
+            <div class="text-xs font-medium text-[#0f172a]">Restore Environment</div>
+            <div class="text-[10px] text-[#64748b]">Recreate the exact Python venv</div>
           </div>
-          <span class="badge bg-green-50 text-green-700 text-[10px]">enabled</span>
+          <span class="tag text-[10px] bg-green-50 text-green-700">enabled</span>
         </div>
-        <div class="flex items-center gap-4 p-3.5 bg-gray-50 rounded-lg border border-gray-100">
-          <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-            <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+        <div class="flex items-center gap-3 p-3 bg-[#f8fafc] rounded-lg border border-[#e9edf2]">
+          <div class="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+            <svg class="w-3.5 h-3.5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
           </div>
           <div class="flex-1">
-            <div class="text-sm font-medium text-gray-900">Restore Data</div>
-            <div class="text-xs text-gray-500">Copy data from version references</div>
+            <div class="text-xs font-medium text-[#0f172a]">Restore Data</div>
+            <div class="text-[10px] text-[#64748b]">Copy data from version references</div>
           </div>
-          <span class="badge bg-green-50 text-green-700 text-[10px]">enabled</span>
+          <span class="tag text-[10px] bg-green-50 text-green-700">enabled</span>
         </div>
-        <div class="flex items-center gap-4 p-3.5 bg-gray-50 rounded-lg border border-gray-100">
-          <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-            <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+        <div class="flex items-center gap-3 p-3 bg-[#f8fafc] rounded-lg border border-[#e9edf2]">
+          <div class="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+            <svg class="w-3.5 h-3.5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
           </div>
           <div class="flex-1">
-            <div class="text-sm font-medium text-gray-900">Verify Output</div>
-            <div class="text-xs text-gray-500">Compare replay output with original via Diff Engine</div>
+            <div class="text-xs font-medium text-[#0f172a]">Verify Output</div>
+            <div class="text-[10px] text-[#64748b]">Compare replay with original</div>
           </div>
-          <span class="badge bg-green-50 text-green-700 text-[10px]">enabled</span>
+          <span class="tag text-[10px] bg-green-50 text-green-700">enabled</span>
         </div>
       </div>
     </div>
 
-    <!-- Pipeline Steps -->
-    <div class="card">
+    <div class="card p-4">
       <div class="card-header">Pipeline Steps</div>
       {% if exp.pipeline.steps %}
       <div class="space-y-0">
         {% for step in exp.pipeline.steps %}
-        <div class="flex items-center gap-3 py-2.5 border-b border-gray-50 last:border-0">
+        <div class="flex items-center gap-3 py-2.5 border-b border-[#f8f9fb] last:border-0">
           <div class="flex flex-col items-center">
-            <div class="w-2.5 h-2.5 rounded-full
+            <div class="w-2 h-2 rounded-full
               {% if step.type == 'training' %}bg-green-500
               {% elif step.type == 'data' %}bg-blue-500
               {% elif step.type == 'eval' %}bg-yellow-500
-              {% else %}bg-gray-400{% endif %}">
-            </div>
-            {% if not loop.last %}<div class="w-px h-4 bg-gray-200 mt-0.5"></div>{% endif %}
+              {% else %}bg-gray-400{% endif %}"></div>
+            {% if not loop.last %}<div class="w-px h-3 bg-[#e9edf2] mt-0.5"></div>{% endif %}
           </div>
           <div class="flex-1">
-            <div class="text-sm font-medium text-gray-900">{{ step.name }}</div>
-            {% if step.type %}<div class="text-xs text-gray-500">{{ step.type }}</div>{% endif %}
+            <div class="text-xs font-medium text-[#0f172a]">{{ step.name }}</div>
+            {% if step.type %}<div class="text-[10px] text-[#64748b]">{{ step.type }}</div>{% endif %}
           </div>
           {% if step.duration_seconds %}
-          <span class="text-xs font-mono text-gray-500 bg-gray-50 px-2 py-0.5 rounded">{{ step.duration_seconds }}s</span>
+          <span class="text-[10px] font-mono text-[#64748b] bg-[#f8fafc] px-2 py-0.5 rounded">{{ step.duration_seconds }}s</span>
           {% endif %}
         </div>
         {% endfor %}
       </div>
       {% else %}
-      <p class="text-gray-400 text-sm">No pipeline steps recorded.</p>
+      <p class="text-[#94a3b8] text-xs">No pipeline steps.</p>
       {% endif %}
     </div>
-
-    <!-- Execution Trace Timeline -->
-    {% if exp.execution_trace %}
-    <div class="card">
-      <div class="card-header">Execution Trace</div>
-      <div class="space-y-0">
-        {% for evt in exp.execution_trace %}
-        <div class="flex gap-4 py-2.5 border-b border-gray-50 last:border-0">
-          <div class="flex flex-col items-center">
-            <div class="w-2 h-2 rounded-full mt-1.5
-              {% if evt.action == 'start' %}bg-green-500
-              {% elif evt.action == 'end' %}bg-blue-500
-              {% elif evt.action == 'error' %}bg-red-500
-              {% else %}bg-gray-400{% endif %}">
-            </div>
-            {% if not loop.last %}<div class="w-px flex-1 bg-gray-200 mt-0.5"></div>{% endif %}
-          </div>
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2">
-              <span class="text-sm font-medium text-gray-900">{{ evt.step }}</span>
-              <span class="text-xs text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">{{ evt.action }}</span>
-            </div>
-            {% if evt.timestamp %}
-            <div class="text-[10px] text-gray-400 font-mono mt-0.5">{{ evt.timestamp.isoformat()[:19] }}</div>
-            {% endif %}
-            {% if evt.details %}
-            <div class="mt-1 text-xs text-gray-500 space-y-0.5 bg-gray-50 rounded p-2">
-              {% for dk, dv in evt.details.items() %}
-              <div class="flex gap-2">
-                <span class="text-gray-400 flex-shrink-0">{{ dk }}:</span>
-                <span class="text-gray-600">{{ dv }}</span>
-              </div>
-              {% endfor %}
-            </div>
-            {% endif %}
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-    </div>
-    {% endif %}
   </div>
 
-  <!-- Right sidebar -->
-  <div class="space-y-6">
-
-    <!-- CLI command -->
-    <div class="card bg-indigo-50 border-indigo-100">
+  <div class="space-y-4">
+    <div class="card p-4 bg-indigo-50 border-indigo-100">
       <div class="card-header text-indigo-900">Run Replay</div>
-      <p class="text-xs text-indigo-700 mb-3">Execute from command line:</p>
+      <p class="text-[10px] text-indigo-700 mb-3">Execute from command line:</p>
       <div class="relative">
-        <pre class="bg-indigo-900 text-indigo-100 p-3 rounded-lg text-xs font-mono overflow-x-auto select-all">eide replay {{ exp.id }}</pre>
-        <button onclick="navigator.clipboard.writeText('eide replay {{ exp.id }}')" class="absolute top-2 right-2 text-indigo-300 hover:text-white text-xs bg-indigo-800 px-1.5 py-0.5 rounded">copy</button>
+        <pre class="bg-indigo-900 text-indigo-100 p-3 rounded-lg text-xs font-mono overflow-x-auto">eide replay {{ exp.id }}</pre>
+        <button onclick="navigator.clipboard.writeText('eide replay {{ exp.id }}'); this.textContent='copied!'; setTimeout(()=>this.textContent='copy', 1500)" class="absolute top-2 right-2 text-indigo-300 hover:text-white text-[10px] bg-indigo-800 px-1.5 py-0.5 rounded">copy</button>
       </div>
     </div>
 
-    <!-- Environment Summary -->
-    <div class="card">
-      <div class="card-header">Environment Snapshot</div>
-      <dl class="space-y-2 text-sm">
+    <div class="card p-4">
+      <div class="card-header">Environment</div>
+      <dl class="space-y-2 text-xs">
         <div class="flex justify-between">
-          <dt class="text-gray-500">OS</dt>
-          <dd class="text-gray-900 text-xs">{{ exp.environment.os or '—' }}</dd>
+          <dt class="text-[#64748b]">OS</dt>
+          <dd class="text-[#0f172a]">{{ exp.environment.os or '—' }}</dd>
         </div>
         <div class="flex justify-between">
-          <dt class="text-gray-500">Python</dt>
-          <dd class="text-gray-900 text-xs">{{ exp.environment.python_version or '—' }}</dd>
+          <dt class="text-[#64748b]">Python</dt>
+          <dd class="text-[#0f172a]">{{ exp.environment.python_version or '—' }}</dd>
         </div>
         <div class="flex justify-between">
-          <dt class="text-gray-500">Packages</dt>
-          <dd class="text-gray-900 text-xs font-mono">{{ exp.environment.packages|length if exp.environment.packages else 0 }}</dd>
+          <dt class="text-[#64748b]">Packages</dt>
+          <dd class="font-mono text-[#0f172a]">{{ exp.environment.packages|length if exp.environment.packages else 0 }}</dd>
         </div>
-        {% if exp.environment.hardware.get('gpu_name') %}
-        <div class="flex justify-between">
-          <dt class="text-gray-500">GPU</dt>
-          <dd class="text-gray-900 text-xs">{{ exp.environment.hardware.gpu_name }}</dd>
-        </div>
-        {% endif %}
-        {% if exp.environment.hardware.get('ram_gb') %}
-        <div class="flex justify-between">
-          <dt class="text-gray-500">RAM</dt>
-          <dd class="text-gray-900 text-xs">{{ exp.environment.hardware.ram_gb }} GB</dd>
-        </div>
-        {% endif %}
       </dl>
     </div>
 
-    <!-- Parameters overview -->
-    <div class="card">
+    <div class="card p-4">
       <div class="card-header">Parameters</div>
       {% if exp.parameters %}
-      <div class="space-y-1.5">
+      <div class="space-y-1">
         {% for k, v in exp.parameters.items()|sort %}
-        <div class="flex justify-between text-xs bg-gray-50 rounded px-2.5 py-1.5">
-          <span class="text-gray-600 truncate max-w-[100px]">{{ k }}</span>
-          <span class="font-mono font-medium text-gray-900">{{ v }}</span>
+        <div class="flex justify-between text-[10px] py-1">
+          <span class="text-[#475569] truncate max-w-[100px]">{{ k }}</span>
+          <span class="font-mono font-medium text-[#0f172a]">{{ v }}</span>
         </div>
         {% endfor %}
       </div>
       {% else %}
-      <p class="text-gray-400 text-xs">No parameters.</p>
-      {% endif %}
-    </div>
-
-    <!-- Metrics -->
-    <div class="card">
-      <div class="card-header">Metrics</div>
-      {% if exp.outputs.metrics %}
-      <div class="space-y-1.5">
-        {% for k, v in exp.outputs.metrics.items()|sort %}
-        <div class="flex justify-between text-xs">
-          <span class="text-gray-600">{{ k }}</span>
-          <span class="font-mono font-semibold text-gray-900">{{ v }}</span>
-        </div>
-        {% endfor %}
-      </div>
-      {% else %}
-      <p class="text-gray-400 text-xs">No metrics.</p>
+      <p class="text-[#94a3b8] text-xs">No parameters.</p>
       {% endif %}
     </div>
   </div>
 </div>
-
 {% endblock %}

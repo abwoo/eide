@@ -31,6 +31,12 @@ class DiffChange(BaseModel):
     significance: float = 0.5
     description: str = ""
 
+    @property
+    def delta(self) -> float | None:
+        if isinstance(self.old_value, (int, float)) and isinstance(self.new_value, (int, float)):
+            return self.new_value - self.old_value
+        return None
+
 
 class ImpactEstimate(BaseModel):
     metric: str = ""
@@ -46,4 +52,4 @@ class DiffReport(BaseModel):
     changes: list[DiffChange] = []
     summary: str = ""
     impact_estimates: list[ImpactEstimate] = []
-    changelog: str = ""
+    changelog: list[str] = []

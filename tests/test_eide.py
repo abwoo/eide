@@ -76,6 +76,80 @@ class TestFileStore:
         with pytest.raises(FileNotFoundError):
             temp_store.load(exp.id)
 
+    def test_wal_recovery_save_crash(self):
+        """Simulate crash during save() — WAL written but index not updated.
+        Verify new FileStore recovers on __init__."""
+        import json
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as tmp:
+            store = FileStore(tmp)
+            exp = ExperimentIR(name="crash-test")
+            exp_path = store._experiments_dir / f"{exp.id}.json"
+
+            # Simulate: write WAL + experiment file, but skip index update
+            store._write_wal("save", exp.id)
+            exp_path.write_text(
+                json.dumps(json.loads(exp.model_dump_json(exclude_none=True))), encoding="utf-8"
+            )
+
+            # Create new store instance — triggers _recover_from_wal()
+            recovered = FileStore(tmp)
+            entries = recovered.list_experiments()
+            ids = [e["id"] for e in entries]
+            assert exp.id in ids, f"WAL recovery failed: {exp.id} not in index {ids}"
+            loaded = recovered.load(exp.id)
+            assert loaded.name == "crash-test"
+
+    def test_wal_recovery_delete_crash(self):
+        """Simulate crash during delete() — WAL written, file deleted, index stale."""
+        with tempfile.TemporaryDirectory() as tmp:
+            store = FileStore(tmp)
+            exp = ExperimentIR(name="delete-crash")
+            store.save(exp)
+            exp_id = exp.id
+
+            # Delete the experiment file manually, write WAL, skip index update
+            (store._experiments_dir / f"{exp_id}.json").unlink()
+            store._write_wal("delete", exp_id)
+
+            # Create new store instance — recovery should clean index
+            recovered = FileStore(tmp)
+            entries = recovered.list_experiments()
+            ids = [e["id"] for e in entries]
+            assert exp_id not in ids, f"WAL recovery failed: {exp_id} still in index"
+
+    def test_wal_recovery_noop_on_clean(self):
+        """No WAL file — recovery should be a no-op."""
+        with tempfile.TemporaryDirectory() as tmp:
+            store = FileStore(tmp)
+            exp = ExperimentIR(name="clean-test")
+            store.save(exp)
+
+            recovered = FileStore(tmp)
+            assert len(recovered.list_experiments()) == 1
+
+    def test_wal_recovery_stale_lock_recovered(self):
+        """Crash leaves both .index.lock and .index.wal — recovery with stale lock."""
+        import os
+        import time
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as tmp:
+            store = FileStore(tmp)
+            exp = ExperimentIR(name="lock-crash")
+            store.save(exp)
+
+            fake_pid = 99999999  # unlikely to be a real PID
+            (Path(tmp) / ".index.lock").write_text(f"{fake_pid} {time.time() - 60}\n", encoding="utf-8")
+            (Path(tmp) / ".index.wal").write_text(
+                '{"op": "save", "experiment_id": "orphan-test", "ts": "2025-01-01T00:00:00"}',
+                encoding="utf-8",
+            )
+
+            recovered = FileStore(tmp)
+            assert recovered is not None
+
 
 class TestParameterDiff:
     def test_no_changes(self):

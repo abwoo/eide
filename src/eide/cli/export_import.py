@@ -31,7 +31,9 @@ def export(experiment_id: str, output_path: str, root: str | None, pretty: bool)
     data = exp.model_dump(mode="json")
     indent = 2 if pretty else None
     Path(output_path).write_text(json.dumps(data, indent=indent, default=str), encoding="utf-8")
-    console.print(f"[green]✔ Exported [bold]{experiment_id}[/bold] to [bold]{output_path}[/bold][/green]")
+    console.print(
+        f"[green]✔ Exported [bold]{experiment_id}[/bold] to [bold]{output_path}[/bold][/green]"
+    )
 
 
 @click.command()
@@ -46,5 +48,7 @@ def import_exp(input_path: str, root: str | None, override_id: str | None):
         data["id"] = override_id
     exp = ExperimentIR.model_validate(data)
     path = store.save(exp)
-    console.print(f"[green]✔ Imported experiment [bold]{exp.id}[/bold] from [bold]{input_path}[/bold][/green]")
+    console.print(
+        f"[green]✔ Imported experiment [bold]{exp.id}[/bold] from [bold]{input_path}[/bold][/green]"
+    )
     console.print(f"  Path: {path}")

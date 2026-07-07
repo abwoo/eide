@@ -59,12 +59,18 @@ class ExperimentGraph:
 
     def _add_experiment(self, exp: ExperimentIR):
         exp_id = exp.id
-        self.graph.add_node(exp_id, type=self.NODE_EXPERIMENT, label=exp.name or exp_id,
-                            timestamp=str(exp.timestamp))
+        self.graph.add_node(
+            exp_id,
+            type=self.NODE_EXPERIMENT,
+            label=exp.name or exp_id,
+            timestamp=str(exp.timestamp),
+        )
 
         for k, v in exp.parameters.items():
             param_id = self._param_id(k, v)
-            self.graph.add_node(param_id, type=self.NODE_PARAMETER, label=f"{k}={v}", key=k, value=str(v))
+            self.graph.add_node(
+                param_id, type=self.NODE_PARAMETER, label=f"{k}={v}", key=k, value=str(v)
+            )
             self.graph.add_edge(exp_id, param_id, type=self.EDGE_HAS_PARAM)
 
         for k, v in exp.data_versions.items():
@@ -104,11 +110,15 @@ class ExperimentGraph:
             if len(group) > 1:
                 sim = self._compute_similarity(group[0], group[1])
                 if sim > 0.5:
-                    self.graph.add_edge(group[0].id, group[1].id, type=self.EDGE_SIMILAR_TO,
-                                        similarity=round(sim, 3))
+                    self.graph.add_edge(
+                        group[0].id,
+                        group[1].id,
+                        type=self.EDGE_SIMILAR_TO,
+                        similarity=round(sim, 3),
+                    )
 
         for i, a in enumerate(experiments):
-            for b in experiments[i + 1:]:
+            for b in experiments[i + 1 :]:
                 if self._has_conflicting_results(a, b):
                     self.graph.add_edge(a.id, b.id, type=self.EDGE_CONFLICTS_WITH)
 

@@ -7,5 +7,4 @@ from eide.core.ir import ExperimentIR
 
 class CaptureAdapter(ABC):
     @abstractmethod
-    def capture(self, **kwargs) -> ExperimentIR:
-        ...
+    def capture(self, **kwargs) -> ExperimentIR: ...

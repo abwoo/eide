@@ -20,7 +20,13 @@ DEFAULT_EIDE_ROOT = os.environ.get("EIDE_ROOT", ".eide")
 @click.option("--root", default=None, help="EIDE store root")
 @click.option("--format", "output_format", default="text", type=click.Choice(["text", "json"]))
 @click.option("--artifacts", default=None, help="Artifacts root path for figure comparison")
-def diff(experiment_a: str, experiment_b: str, root: str | None, output_format: str, artifacts: str | None):
+def diff(
+    experiment_a: str,
+    experiment_b: str,
+    root: str | None,
+    output_format: str,
+    artifacts: str | None,
+):
     """Diff two experiments"""
     store = FileStore(root or DEFAULT_EIDE_ROOT)
 
@@ -61,9 +67,11 @@ def _print_text_report(report, exp_a_id: str, exp_b_id: str):
         table.add_column("Key", width=40)
         table.add_column("Description")
         for c in cat_changes:
-            type_str = {"added": "[green]+add[/green]", "removed": "[red]-del[/red]", "modified": "[blue]~mod[/blue]"}.get(
-                c.change_type.value, c.change_type.value
-            )
+            type_str = {
+                "added": "[green]+add[/green]",
+                "removed": "[red]-del[/red]",
+                "modified": "[blue]~mod[/blue]",
+            }.get(c.change_type.value, c.change_type.value)
             table.add_row(type_str, c.key, c.description)
         console.print(table)
 

@@ -20,6 +20,7 @@ def _detect_hardware() -> dict[str, str]:
 
     try:
         import psutil
+
         hw["ram_gb"] = f"{psutil.virtual_memory().total / (1024**3):.1f}"
         hw["ram_available_gb"] = f"{psutil.virtual_memory().available / (1024**3):.1f}"
     except ImportError:
@@ -27,6 +28,7 @@ def _detect_hardware() -> dict[str, str]:
 
     try:
         import torch
+
         hw["torch_version"] = torch.__version__
         hw["cuda_available"] = str(torch.cuda.is_available())
         if torch.cuda.is_available():
@@ -39,7 +41,9 @@ def _detect_hardware() -> dict[str, str]:
     try:
         result = subprocess.run(
             ["nvidia-smi", "--query-gpu=name,memory.total,driver_version", "--format=csv,noheader"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         if result.returncode == 0:
             lines = result.stdout.strip().split("\n")
@@ -62,21 +66,27 @@ def _detect_git() -> dict[str, str]:
     try:
         result = subprocess.run(
             ["git", "rev-parse", "HEAD"],
-            capture_output=True, text=True, timeout=3,
+            capture_output=True,
+            text=True,
+            timeout=3,
         )
         if result.returncode == 0:
             git_info["commit"] = result.stdout.strip()[:12]
 
         result2 = subprocess.run(
             ["git", "diff", "--stat"],
-            capture_output=True, text=True, timeout=3,
+            capture_output=True,
+            text=True,
+            timeout=3,
         )
         if result2.returncode == 0 and result2.stdout.strip():
             git_info["dirty"] = "true"
 
         result3 = subprocess.run(
             ["git", "branch", "--show-current"],
-            capture_output=True, text=True, timeout=3,
+            capture_output=True,
+            text=True,
+            timeout=3,
         )
         if result3.returncode == 0 and result3.stdout.strip():
             git_info["branch"] = result3.stdout.strip()
@@ -90,16 +100,21 @@ def _detect_conda() -> dict[str, str]:
     try:
         result = subprocess.run(
             ["conda", "--version"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         if result.returncode == 0:
             conda_info["conda_version"] = result.stdout.strip()
             env_result = subprocess.run(
                 ["conda", "info", "--envs", "--json"],
-                capture_output=True, text=True, timeout=5,
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             if env_result.returncode == 0:
                 import json
+
                 data = json.loads(env_result.stdout)
                 conda_info["active_env"] = data.get("active_prefix_name", "")
                 conda_info["env_count"] = str(len(data.get("envs", [])))
@@ -131,10 +146,13 @@ def _detect_environment() -> EnvironmentInfo:
     try:
         result = subprocess.run(
             [sys.executable, "-m", "pip", "list", "--format=json"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         if result.returncode == 0:
             import json
+
             packages = json.loads(result.stdout)
             info.packages = {pkg["name"]: pkg["version"] for pkg in packages}
     except Exception:
@@ -146,7 +164,7 @@ def _detect_environment() -> EnvironmentInfo:
 
 
 class ManualCapture(CaptureAdapter):
-    def capture(
+    def capture(  # type: ignore[override]
         self,
         name: str = "",
         description: str = "",
@@ -175,10 +193,13 @@ class ManualCapture(CaptureAdapter):
         if pipeline_steps:
             from eide.core.types import PipelineSpec, PipelineStep
 
-            exp.pipeline = PipelineSpec(
-                name=name,
-                steps=[PipelineStep(**s) for s in pipeline_steps],
-            )
+            parsed_steps = []
+            for s in pipeline_steps:
+                if isinstance(s, str):
+                    parsed_steps.append(PipelineStep(name=s))
+                else:
+                    parsed_steps.append(PipelineStep(**s))
+            exp.pipeline = PipelineSpec(name=name, steps=parsed_steps)
         if metrics:
             exp.outputs.metrics = metrics
         if figures:

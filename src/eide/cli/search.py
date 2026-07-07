@@ -35,7 +35,9 @@ def search(query: str, field: str, as_json: bool, root: str | None):
         tags = ", ".join(f"{k}={v}" for k, v in itertools.islice(exp.tags.items(), 3))
         metrics = ", ".join(
             f"{k}={v}"
-            for k, v in (list(exp.outputs.metrics.items()) if exp.outputs and exp.outputs.metrics else [])[:3]
+            for k, v in (
+                list(exp.outputs.metrics.items()) if exp.outputs and exp.outputs.metrics else []
+            )[:3]
         )
         click.echo(f"  {exp.id[:12]}  {name}")
         if tags:

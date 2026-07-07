@@ -25,9 +25,7 @@ class DiffEngine:
         changes.extend(diff_parameters(exp_a.parameters, exp_b.parameters, parameter_tolerances))
         changes.extend(diff_pipeline(exp_a.pipeline, exp_b.pipeline))
         changes.extend(diff_environment(exp_a.environment, exp_b.environment))
-        changes.extend(
-            diff_outputs(exp_a.outputs, exp_b.outputs, self.artifacts_root)
-        )
+        changes.extend(diff_outputs(exp_a.outputs, exp_b.outputs, self.artifacts_root))
         changes.extend(
             diff_metric_history(exp_a.outputs.metric_history, exp_b.outputs.metric_history)
         )
@@ -52,7 +50,13 @@ class DiffEngine:
             va = exp_a.tags.get(key)
             vb = exp_b.tags.get(key)
             if va != vb:
-                ct = ChangeType.ADDED if key not in exp_a.tags else ChangeType.REMOVED if key not in exp_b.tags else ChangeType.MODIFIED
+                ct = (
+                    ChangeType.ADDED
+                    if key not in exp_a.tags
+                    else ChangeType.REMOVED
+                    if key not in exp_b.tags
+                    else ChangeType.MODIFIED
+                )
                 changes.append(
                     DiffChange(
                         category=DiffCategory.PARAMETER,
@@ -61,7 +65,9 @@ class DiffEngine:
                         old_value=va,
                         new_value=vb,
                         significance=0.3,
-                        description=f"Tag {key}: {va} -> {vb}" if va and vb else f"Tag {ct.value}: {key}={vb or va}",
+                        description=f"Tag {key}: {va} -> {vb}"
+                        if va and vb
+                        else f"Tag {ct.value}: {key}={vb or va}",
                     )
                 )
 
@@ -73,7 +79,7 @@ class DiffEngine:
             experiment_b=exp_b.id,
             changes=changes,
             summary="\n".join(summary_lines),
-            changelog="\n".join(changelog_lines),
+            changelog=changelog_lines,
         )
 
         report.impact_estimates = _estimate_impacts(changes)
@@ -101,7 +107,9 @@ def _build_changelog(changes: list) -> list[str]:
 def _estimate_impacts(changes: list) -> list:
     from eide.core.diff import ImpactEstimate
 
-    metric_changes = [c for c in changes if c.category == DiffCategory.OUTPUT and c.key.startswith("metrics.")]
+    metric_changes = [
+        c for c in changes if c.category == DiffCategory.OUTPUT and c.key.startswith("metrics.")
+    ]
     param_changes = [c for c in changes if c.category == DiffCategory.PARAMETER]
     struct_changes = [c for c in changes if c.category == DiffCategory.STRUCTURAL]
     env_changes = [c for c in changes if c.category == DiffCategory.ENVIRONMENT]
@@ -126,12 +134,18 @@ def _estimate_impacts(changes: list) -> list:
             if pc.significance > 0.3:
                 if "lr" in pc.key.lower() or "learning" in pc.key.lower():
                     if metric_key in ("accuracy", "loss", "f1"):
-                        correlation_reasons.append((pc, 0.7, f"Learning rate change ({pc.description[:40]})"))
+                        correlation_reasons.append(
+                            (pc, 0.7, f"Learning rate change ({pc.description[:40]})")
+                        )
                 elif "batch_size" in pc.key.lower():
                     if metric_key in ("accuracy", "loss"):
-                        correlation_reasons.append((pc, 0.5, f"Batch size change ({pc.description[:40]})"))
+                        correlation_reasons.append(
+                            (pc, 0.5, f"Batch size change ({pc.description[:40]})")
+                        )
                 elif "epoch" in pc.key.lower():
-                    correlation_reasons.append((pc, 0.4, f"Epoch count change ({pc.description[:40]})"))
+                    correlation_reasons.append(
+                        (pc, 0.4, f"Epoch count change ({pc.description[:40]})")
+                    )
                 else:
                     correlation_reasons.append((pc, 0.35, f"Parameter '{pc.key}' changed"))
 
@@ -146,7 +160,9 @@ def _estimate_impacts(changes: list) -> list:
             correlation_reasons.append((dc, 0.7, "Data version changed"))
 
         if mc.significance > 0.3:
-            correlation_reasons.append((mc, mc.significance * 0.3, "Direct metric change magnitude"))
+            correlation_reasons.append(
+                (mc, mc.significance * 0.3, "Direct metric change magnitude")
+            )
 
         if correlation_reasons:
             best = max(correlation_reasons, key=lambda x: x[1])

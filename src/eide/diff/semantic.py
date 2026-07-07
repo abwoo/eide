@@ -8,9 +8,12 @@ from eide.core.types import ExperimentOutputs
 
 
 def _compute_statistical_significance(
-    val_a: float, val_b: float,
-    std_a: float | None = None, std_b: float | None = None,
-    n_a: int = 1, n_b: int = 1,
+    val_a: float,
+    val_b: float,
+    std_a: float | None = None,
+    std_b: float | None = None,
+    n_a: int = 1,
+    n_b: int = 1,
 ) -> dict:
     """Compute statistical significance metrics between two values.
 
@@ -22,15 +25,20 @@ def _compute_statistical_significance(
     rel_change = raw_diff / avg if avg > 0 else 0
 
     if std_a is not None and std_b is not None and n_a > 0 and n_b > 0:
-        pooled_std = (((n_a - 1) * (std_a ** 2)) + ((n_b - 1) * (std_b ** 2))) / (n_a + n_b - 2)
+        pooled_std = (((n_a - 1) * (std_a**2)) + ((n_b - 1) * (std_b**2))) / (n_a + n_b - 2)
         pooled_std = max(pooled_std, 0.001) ** 0.5
         cohens_d = raw_diff / pooled_std
 
         try:
             from scipy.stats import ttest_ind_from_stats
+
             t_stat, p_value = ttest_ind_from_stats(
-                mean1=val_a, std1=std_a, nobs1=n_a,
-                mean2=val_b, std2=std_b, nobs2=n_b,
+                mean1=val_a,
+                std1=std_a,
+                nobs1=n_a,
+                mean2=val_b,
+                std2=std_b,
+                nobs2=n_b,
             )
         except Exception:
             p_value = max(0.001, 1.0 - rel_change)
@@ -72,7 +80,10 @@ def diff_metric_history(
                         old_value=f"{len(ha)} points, final={final_a}",
                         new_value=f"{len(hb)} points, final={final_b}",
                         significance=0.5,
-                        description=f"Metric '{key}' history: {len(ha)} pts -> {len(hb)} pts, final {final_a} -> {final_b}",
+                        description=(
+                            f"Metric '{key}' history: {len(ha)} pts -> {len(hb)} pts"
+                            f", final {final_a} -> {final_b}"
+                        ),
                     )
                 )
         elif ha and not hb:
@@ -139,7 +150,7 @@ def diff_metrics(
                     description=f"Metric removed: {key} (was {val_a})",
                 )
             )
-        elif val_a != val_b:
+        elif val_a is not None and val_b is not None and val_a != val_b:
             pct = _safe_pct(val_b - val_a, val_a)
             direction = "↑" if val_b > val_a else "↓"
 
@@ -166,7 +177,9 @@ def diff_metrics(
                     old_value=val_a,
                     new_value=val_b,
                     significance=significance,
-                    description=f"Metric {key}: {val_a} -> {val_b} {direction} ({pct:+.2f}%){extra}",
+                    description=(
+                        f"Metric {key}: {val_a} -> {val_b} {direction} ({pct:+.2f}%){extra}"
+                    ),
                 )
             )
 
@@ -224,7 +237,10 @@ def diff_figures(
                                 old_value="SSIM=1.0 (original)",
                                 new_value=f"SSIM={ssim_val:.4f}",
                                 significance=1.0 - ssim_val,
-                                description=f"Figure {fig}: SSIM={ssim_val:.4f} (visually {'similar' if ssim_val > 0.7 else 'different'})",
+                                description=(
+                                    f"Figure {fig}: SSIM={ssim_val:.4f}"
+                                    f" (visually {'similar' if ssim_val > 0.7 else 'different'})"
+                                ),
                             )
                         )
             else:
@@ -261,6 +277,7 @@ def _compute_ssim(path_a: Path, path_b: Path) -> float | None:
 
         if img_a.shape != img_b.shape:
             from skimage.transform import resize
+
             h, w = min(img_a.shape[0], img_b.shape[0]), min(img_a.shape[1], img_b.shape[1])
             img_a = resize(img_a, (h, w), anti_aliasing=True)
             img_b = resize(img_b, (h, w), anti_aliasing=True)
@@ -273,7 +290,14 @@ def _compute_ssim(path_a: Path, path_b: Path) -> float | None:
             img_b = img_b[:, :, :3]
 
         multichannel = img_a.ndim == 3
-        return float(ssim(img_a, img_b, channel_axis=-1 if multichannel else None, data_range=img_a.max() - img_a.min() or 1.0))
+        return float(
+            ssim(
+                img_a,
+                img_b,
+                channel_axis=-1 if multichannel else None,
+                data_range=img_a.max() - img_a.min() or 1.0,
+            )
+        )
     except Exception:
         return None
 

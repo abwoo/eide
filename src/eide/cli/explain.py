@@ -30,7 +30,9 @@ def explain(experiment_a: str, experiment_b: str, root: str | None):
     causal = CausalAttribution(store=store)
     explanation = causal.explain(exp_a, exp_b)
 
-    console.print(Panel(f"[bold cyan]Experiment Explanation[/bold cyan]\n{experiment_a} vs {experiment_b}"))
+    console.print(
+        Panel(f"[bold cyan]Experiment Explanation[/bold cyan]\n{experiment_a} vs {experiment_b}")
+    )
     console.print(f"\n[bold]Summary:[/bold]\n{explanation['summary']}")
 
     stats = explanation["change_statistics"]
@@ -41,13 +43,16 @@ def explain(experiment_a: str, experiment_b: str, root: str | None):
     console.print("\n[bold]Likely Causes (ranked):[/bold]")
     for i, cause in enumerate(explanation["likely_cause"], 1):
         confidence_pct = cause["confidence"] * 100
-        console.print(f"  {i}. [{'green' if cause['confidence'] > 0.6 else 'yellow'}]{cause['cause']}[/] ({confidence_pct:.0f}% confidence)")
+        console.print(
+            f"  {i}. [{'green' if cause['confidence'] > 0.6 else 'yellow'}]{cause['cause']}[/]"
+            f" ({confidence_pct:.0f}% confidence)"
+        )
         console.print(f"     {cause['reasoning']}")
 
-    if explanation["changelog"]:
+    changelog = explanation.get("changelog", [])
+    if isinstance(changelog, str):
+        changelog = changelog.split("\n")
+    if changelog:
         console.print("\n[bold]Changes Log:[/bold]")
-        for line in explanation["changelog"]:
+        for line in changelog:
             console.print(f"  • {line}")
-
-
-

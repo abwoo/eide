@@ -32,7 +32,9 @@ def tag_add(experiment_id: str, key: str, value: str, root: str | None):
         return
     exp.tags[key] = value
     store.save(exp)
-    console.print(f"[green]✔ Tag [bold]{key}={value}[/bold] added to [bold]{experiment_id}[/bold][/green]")
+    console.print(
+        f"[green]✔ Tag [bold]{key}={value}[/bold] added to [bold]{experiment_id}[/bold][/green]"
+    )
 
 
 @tag.command("remove")
@@ -50,9 +52,16 @@ def tag_remove(experiment_id: str, key: str, root: str | None):
     if key in exp.tags:
         old = exp.tags.pop(key)
         store.save(exp)
-        console.print(f"[green]✔ Tag [bold]{key}={old}[/bold] removed from [bold]{experiment_id}[/bold][/green]")
+        console.print(
+            (
+                f"[green]✔ Tag [bold]{key}={old}[/bold]"
+                f" removed from [bold]{experiment_id}[/bold][/green]"
+            )
+        )
     else:
-        console.print(f"[yellow]✖ Tag [bold]{key}[/bold] not found on [bold]{experiment_id}[/bold][/yellow]")
+        console.print(
+            f"[yellow]✖ Tag [bold]{key}[/bold] not found on [bold]{experiment_id}[/bold][/yellow]"
+        )
 
 
 @tag.command("list")

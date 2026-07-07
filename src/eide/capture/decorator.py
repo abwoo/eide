@@ -38,7 +38,9 @@ class ExperimentLogger:
 
     def _log_metric_history(self, key: str, value: float):
         history = self.experiment.outputs.metric_history.setdefault(key, [])
-        history.append(MetricPoint(step=self._step, value=value, timestamp=datetime.now(timezone.utc)))
+        history.append(
+            MetricPoint(step=self._step, value=value, timestamp=datetime.now(timezone.utc))
+        )
         self._step += 1
 
     def log_param(self, key: str, value: Any):
@@ -81,6 +83,7 @@ def track(
             ...
             return {"accuracy": 0.92}
     """
+
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -121,7 +124,11 @@ def track(
                 exp.metadata["duration_seconds"] = round(elapsed, 2)
                 exp.metadata["success"] = False
                 exp.execution_trace.append(
-                    TraceEvent(step=func.__name__, action="error", details={"error": str(e), "duration": round(elapsed, 2)})
+                    TraceEvent(
+                        step=func.__name__,
+                        action="error",
+                        details={"error": str(e), "duration": round(elapsed, 2)},
+                    )
                 )
                 if auto_save:
                     _save_exp(exp, store_root)
@@ -131,7 +138,9 @@ def track(
             exp.metadata["duration_seconds"] = round(elapsed, 2)
             exp.metadata["success"] = True
             exp.execution_trace.append(
-                TraceEvent(step=func.__name__, action="complete", details={"duration": round(elapsed, 2)})
+                TraceEvent(
+                    step=func.__name__, action="complete", details={"duration": round(elapsed, 2)}
+                )
             )
 
             if capture_return and result is not None:

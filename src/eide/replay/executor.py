@@ -56,8 +56,12 @@ class PipelineExecutor:
     def _run_shell(self, step: PipelineStep) -> tuple[str, int]:
         cmd = step.name
         result = subprocess.run(
-            cmd, shell=True, cwd=self.work_dir,
-            capture_output=True, text=True, timeout=3600,
+            cmd,
+            shell=True,
+            cwd=self.work_dir,
+            capture_output=True,
+            text=True,
+            timeout=3600,
         )
         output = result.stdout + result.stderr
         return output, result.returncode
@@ -77,7 +81,10 @@ class PipelineExecutor:
             return "(no Python code or script specified)", 1
         result = subprocess.run(
             [self.python_exe, str(target)],
-            cwd=self.work_dir, capture_output=True, text=True, timeout=3600,
+            cwd=self.work_dir,
+            capture_output=True,
+            text=True,
+            timeout=3600,
         )
         output = result.stdout + result.stderr
         if code:
@@ -100,12 +107,19 @@ class PipelineExecutor:
         if suffix in (".py",):
             result = subprocess.run(
                 [self.python_exe, str(script_full)],
-                cwd=self.work_dir, capture_output=True, text=True, timeout=3600,
+                cwd=self.work_dir,
+                capture_output=True,
+                text=True,
+                timeout=3600,
             )
         else:
             result = subprocess.run(
-                [str(script_full)], shell=True,
-                cwd=self.work_dir, capture_output=True, text=True, timeout=3600,
+                [str(script_full)],
+                shell=True,
+                cwd=self.work_dir,
+                capture_output=True,
+                text=True,
+                timeout=3600,
             )
 
         output = result.stdout + result.stderr

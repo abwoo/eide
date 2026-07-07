@@ -29,24 +29,34 @@ class EnvironmentManager:
 
     def _create_venv(self):
         import venv
+
         builder = venv.EnvBuilder(with_pip=True, clear=True)
         builder.create(self.venv_path)
 
     def _install_packages(self, packages: dict[str, str]):
         if not packages:
             return
+        assert self.venv_path is not None
         pip = self.venv_path / ("Scripts" if platform.system() == "Windows" else "bin") / "pip"
         req_lines = [f"{pkg}=={ver}" if ver else pkg for pkg, ver in sorted(packages.items())]
         req_file = self.work_dir / "_eide_requirements.txt"
         req_file.write_text("\n".join(req_lines), encoding="utf-8")
 
-        result = subprocess.run(
-            [str(pip), "install", "-r", str(req_file)],
-            capture_output=True, text=True, timeout=120,
-        )
-        req_file.unlink(missing_ok=True)
-        if result.returncode != 0:
-            print(f"[warn] Some packages may not have been installed: {result.stderr[:200]}")
+        try:
+            result = subprocess.run(
+                [str(pip), "install", "-r", str(req_file)],
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+            if result.returncode != 0:
+                print(f"[warn] Some packages may not have been installed: {result.stderr[:200]}")
+        except FileNotFoundError:
+            print(f"[warn] pip not found at {pip}")
+        except subprocess.TimeoutExpired:
+            print("[warn] pip install timed out after 120s")
+        finally:
+            req_file.unlink(missing_ok=True)
 
     def detect_current(self) -> EnvironmentInfo:
         """Detect the current runtime environment."""
@@ -57,10 +67,13 @@ class EnvironmentManager:
         try:
             result = subprocess.run(
                 [sys.executable, "-m", "pip", "list", "--format=json"],
-                capture_output=True, text=True, timeout=10,
+                capture_output=True,
+                text=True,
+                timeout=10,
             )
             if result.returncode == 0:
                 import json
+
                 info.packages = {pkg["name"]: pkg["version"] for pkg in json.loads(result.stdout)}
         except Exception:
             pass
@@ -91,27 +104,62 @@ class DockerEnvironmentManager:
         dockerfile_path = Path(work_dir) / "Dockerfile.eide"
         dockerfile_path.write_text(dockerfile, encoding="utf-8")
 
-        result = subprocess.run(
-            ["docker", "build", "-t", self.image_tag, "-f", str(dockerfile_path), str(Path(work_dir).parent)],
-            capture_output=True, text=True, timeout=300,
-        )
-        if result.returncode != 0:
-            raise RuntimeError(f"Docker build failed: {result.stderr[:500]}")
+        try:
+            result = subprocess.run(
+                [
+                    "docker",
+                    "build",
+                    "-t",
+                    self.image_tag,
+                    "-f",
+                    str(dockerfile_path),
+                    str(Path(work_dir).parent),
+                ],
+                capture_output=True,
+                text=True,
+                timeout=300,
+            )
+            if result.returncode != 0:
+                raise RuntimeError(f"Docker build failed: {result.stderr[:500]}")
+        except FileNotFoundError:
+            raise RuntimeError("Docker not found. Install Docker or disable container replay.")
+        except subprocess.TimeoutExpired:
+            raise RuntimeError("Docker build timed out after 300s")
         return self.image_tag
 
-    def run(self, image_tag: str, command: str, work_dir: str | Path, timeout: int = 3600) -> tuple[str, int]:
+    def run(
+        self, image_tag: str, command: str, work_dir: str | Path, timeout: int = 3600
+    ) -> tuple[str, int]:
         """Run a command inside a Docker container."""
-        result = subprocess.run(
-            ["docker", "run", "--rm",
-             "-v", f"{Path(work_dir).resolve()}:/workspace",
-             "-w", "/workspace",
-             image_tag, "sh", "-c", command],
-            capture_output=True, text=True, timeout=timeout,
-        )
-        output = result.stdout + result.stderr
-        return output, result.returncode
+        try:
+            result = subprocess.run(
+                [
+                    "docker",
+                    "run",
+                    "--rm",
+                    "-v",
+                    f"{Path(work_dir).resolve()}:/workspace",
+                    "-w",
+                    "/workspace",
+                    image_tag,
+                    "sh",
+                    "-c",
+                    command,
+                ],
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+            )
+            output = result.stdout + result.stderr
+            return output, result.returncode
+        except FileNotFoundError:
+            raise RuntimeError("Docker not found. Install Docker or disable container replay.")
+        except subprocess.TimeoutExpired:
+            raise RuntimeError(f"Docker run timed out after {timeout}s")
 
-    def run_python(self, image_tag: str, script_path: str | Path, work_dir: str | Path) -> tuple[str, int]:
+    def run_python(
+        self, image_tag: str, script_path: str | Path, work_dir: str | Path
+    ) -> tuple[str, int]:
         """Run a Python script inside a Docker container."""
         return self.run(image_tag, f"python {script_path}", work_dir)
 
@@ -124,7 +172,11 @@ class DockerEnvironmentManager:
         lines = [f"FROM {base_image}", "WORKDIR /workspace", "COPY . /workspace"]
 
         if env_info.packages:
-            req_lines = [f"{pkg}=={ver}" if ver else pkg for pkg, ver in sorted(env_info.packages.items()) if pkg != "python"]
+            req_lines = [
+                f"{pkg}=={ver}" if ver else pkg
+                for pkg, ver in sorted(env_info.packages.items())
+                if pkg != "python"
+            ]
             if req_lines:
                 lines.append("RUN pip install --no-cache-dir " + " ".join(req_lines))
 
@@ -134,8 +186,9 @@ class DockerEnvironmentManager:
     def check_available(self) -> bool:
         """Check if Docker is available on this system."""
         try:
-            result = subprocess.run(["docker", "--version"], capture_output=True, text=True, timeout=5)
+            result = subprocess.run(
+                ["docker", "--version"], capture_output=True, text=True, timeout=5
+            )
             return result.returncode == 0
         except Exception:
             return False
-

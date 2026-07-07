@@ -7,6 +7,18 @@ import click
 from rich.console import Console
 from rich.table import Table
 
+from eide.cli.advise import advise as _advise_cmd
+from eide.cli.dashboard import dashboard as _dashboard_cmd
+from eide.cli.diff import diff as _diff_cmd
+from eide.cli.explain import explain as _explain_cmd
+from eide.cli.export_import import export as _export_cmd
+from eide.cli.export_import import import_exp as _import_cmd
+from eide.cli.graph import graph as _graph_cmd
+from eide.cli.replay import replay as _replay_cmd
+from eide.cli.run import run as _run_cmd
+from eide.cli.search import search as _search_cmd
+from eide.cli.serve import serve as _serve_cmd
+from eide.cli.tag import tag as _tag_cmd
 from eide.core.ir import ExperimentIR
 from eide.storage.filestore import FileStore
 
@@ -55,7 +67,9 @@ def create(name: str, project: str, tag: tuple[str, ...], diff: bool, root: str 
     if diff:
         result = store.diff_with_baseline(exp.id)
         if result:
-            console.print(f"\n[bold]Auto-diff with baseline [dim]{result['baseline_id'][:12]}[/dim]:[/bold]")
+            console.print(
+                f"\n[bold]Auto-diff with baseline [dim]{result['baseline_id'][:12]}[/dim]:[/bold]"
+            )
             console.print(f"  [dim]{result['summary']}[/dim]")
 
 
@@ -142,7 +156,7 @@ def show(experiment_id: str, root: str | None):
 
     if exp.outputs.metrics:
         console.print("\n[bold]Metrics:[/bold]")
-        for k, v in sorted(exp.outputs.metrics.items()):
+        for k, v in sorted(exp.outputs.metrics.items()):  # type: ignore[assignment]
             console.print(f"  {k} = {v}")
 
     if exp.outputs.figures:
@@ -179,7 +193,9 @@ def show(experiment_id: str, root: str | None):
                 for dk, dv in sorted(evt.details.items()):
                     console.print(f"    {dk}: {dv}")
 
-    console.print(f"\n[dim]Environment: {exp.environment.os} | Python {exp.environment.python_version}[/dim]")
+    console.print(
+        f"\n[dim]Environment: {exp.environment.os} | Python {exp.environment.python_version}[/dim]"
+    )
 
 
 @cli.command()
@@ -188,7 +204,11 @@ def show(experiment_id: str, root: str | None):
 def delete(experiment_id: str, root: str | None):
     """Delete an experiment"""
     store = _get_store(root)
-    store.delete(experiment_id)
+    try:
+        store.delete(experiment_id)
+    except FileNotFoundError as e:
+        console.print(f"[red]✖ {e}[/red]")
+        return
     console.print(f"[green]✔ Deleted experiment [bold]{experiment_id}[/bold][/green]")
 
 
@@ -210,9 +230,20 @@ def capture():
 @click.option("--metadata", multiple=True, help="Metadata (key=value)")
 @click.option("--diff", is_flag=True, help="Auto-diff against most similar baseline")
 @click.option("--root", default=None, help="EIDE store root")
-def manual(name: str, description: str, project: str, param: tuple[str, ...], metric: tuple[str, ...],
-           tag: tuple[str, ...], step: tuple[str, ...], data_version: tuple[str, ...],
-           decision: tuple[str, ...], metadata: tuple[str, ...], diff: bool, root: str | None):
+def manual(
+    name: str,
+    description: str,
+    project: str,
+    param: tuple[str, ...],
+    metric: tuple[str, ...],
+    tag: tuple[str, ...],
+    step: tuple[str, ...],
+    data_version: tuple[str, ...],
+    decision: tuple[str, ...],
+    metadata: tuple[str, ...],
+    diff: bool,
+    root: str | None,
+):
     """Manually capture an experiment"""
     from eide.capture.manual import capture_manual
 
@@ -258,7 +289,9 @@ def manual(name: str, description: str, project: str, param: tuple[str, ...], me
     if diff:
         result = store.diff_with_baseline(exp.id)
         if result:
-            console.print(f"\n[bold]Auto-diff with baseline [dim]{result['baseline_id'][:12]}[/dim]:[/bold]")
+            console.print(
+                f"\n[bold]Auto-diff with baseline [dim]{result['baseline_id'][:12]}[/dim]:[/bold]"
+            )
             console.print(f"  [dim]{result['summary']}[/dim]")
             console.print(f"  [dim]{result['change_count']} change(s)[/dim]")
         else:
@@ -287,22 +320,13 @@ def mlflow(run_id: str, name: str | None, project: str | None, root: str | None)
 
     store = _get_store(root)
     store.save(exp)
-    console.print(f"[green]✔ Captured MLflow run [bold]{run_id}[/bold] as experiment [bold]{exp.id}[/bold][/green]")
+    console.print(
+        (
+            f"[green]✔ Captured MLflow run [bold]{run_id}[/bold]"
+            f" as experiment [bold]{exp.id}[/bold][/green]"
+        )
+    )
 
-
-# Register subcommands
-from eide.cli.advise import advise as _advise_cmd
-from eide.cli.dashboard import dashboard as _dashboard_cmd
-from eide.cli.diff import diff as _diff_cmd
-from eide.cli.explain import explain as _explain_cmd
-from eide.cli.export_import import export as _export_cmd
-from eide.cli.export_import import import_exp as _import_cmd
-from eide.cli.graph import graph as _graph_cmd
-from eide.cli.replay import replay as _replay_cmd
-from eide.cli.run import run as _run_cmd
-from eide.cli.search import search as _search_cmd
-from eide.cli.serve import serve as _serve_cmd
-from eide.cli.tag import tag as _tag_cmd
 
 cli.add_command(_export_cmd)
 cli.add_command(_import_cmd)

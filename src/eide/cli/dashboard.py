@@ -11,12 +11,15 @@ def dashboard(host: str, port: int, root: str | None):
     """Start the EIDE web dashboard"""
     try:
         from eide.dashboard.app import serve
+
         serve(host=host, port=port, root=root)
     except ImportError as e:
         import click
+
         click.echo(f"Missing dependencies: {e}")
         click.echo("Install: pip install eide-core[full]")
     except Exception as e:
         import click
+
         click.echo(f"Failed to start dashboard: {e}")
         raise

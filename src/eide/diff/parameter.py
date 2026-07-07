@@ -7,7 +7,7 @@ from typing import Any
 from eide.core.diff import ChangeType, DiffCategory, DiffChange
 
 
-def _flatten_dict(d: dict[str, Any], prefix: str = "") -> dict[str, Any]:
+def _flatten_dict(d: Mapping[str, Any], prefix: str = "") -> dict[str, Any]:
     result: dict[str, Any] = {}
     for k, v in sorted(d.items()):
         key = f"{prefix}.{k}" if prefix else k

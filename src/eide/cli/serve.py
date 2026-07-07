@@ -16,6 +16,7 @@ def serve(root: str, host: str, port: int):
     """Start the MCP server"""
     try:
         from eide.mcp.server import serve as _serve
+
         console.print(f"[green]Starting EIDE MCP server on {host}:{port}...[/green]")
         console.print(f"[dim]Store root: {root}[/dim]")
         _serve(eide_root=root, host=host, port=port)

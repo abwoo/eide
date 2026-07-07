@@ -76,10 +76,14 @@ class ExperimentContext:
                 cpu_vals = [s.get("cpu_percent", 0) for s in snapshots if "cpu_percent" in s]
                 ram_vals = [s.get("ram_percent", 0) for s in snapshots if "ram_percent" in s]
                 if cpu_vals:
-                    self.experiment.metadata["avg_cpu_percent"] = round(sum(cpu_vals) / len(cpu_vals), 1)
+                    self.experiment.metadata["avg_cpu_percent"] = round(
+                        sum(cpu_vals) / len(cpu_vals), 1
+                    )
                     self.experiment.metadata["max_cpu_percent"] = round(max(cpu_vals), 1)
                 if ram_vals:
-                    self.experiment.metadata["avg_ram_percent"] = round(sum(ram_vals) / len(ram_vals), 1)
+                    self.experiment.metadata["avg_ram_percent"] = round(
+                        sum(ram_vals) / len(ram_vals), 1
+                    )
 
         if self.auto_save:
             store = FileStore(self.store_root)

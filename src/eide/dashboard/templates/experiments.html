@@ -4,124 +4,200 @@
 {% block content %}
 
 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-  <div>
-    <p class="text-sm text-gray-500"><span class="font-semibold text-gray-800">{{ entries|length }}</span> experiment{% if entries|length != 1 %}s{% endif %} total</p>
+  <div class="flex items-center gap-3">
+    <p class="text-sm text-[#64748b]"><span class="font-semibold text-[#0f172a]">{{ entries|length }}</span> runs</p>
+    {% if search %}
+    <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700">search: "{{ search }}"</span>
+    {% endif %}
   </div>
   <div class="flex gap-2">
     <form method="get" action="/experiments" class="flex gap-2">
-      <input type="text" name="search" value="{{ search or '' }}" placeholder="Search by name, tag, param..." class="input w-64">
-      <button type="submit" class="btn-secondary text-xs">Search</button>
-      {% if search %}
-      <a href="/experiments" class="btn-secondary text-xs">Clear</a>
+      {% if current_project %}
+      <input type="hidden" name="project" value="{{ current_project }}">
+      {% endif %}
+      <input type="text" name="search" value="{{ search or '' }}" placeholder="Search by name, tag, param..." class="input w-48 md:w-64">
+      <button type="submit" class="btn btn-secondary text-xs">Search</button>
+      {% if search or current_project %}
+      <a href="/experiments" class="btn btn-ghost text-xs">Clear</a>
       {% endif %}
     </form>
+    <a href="/create" class="btn btn-primary text-xs">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+      New
+    </a>
   </div>
 </div>
 
 {% if not entries %}
 <div class="card flex flex-col items-center justify-center py-20">
-  <svg class="w-16 h-16 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-  <p class="text-gray-500 mb-1">No experiments found{% if search %} matching "{{ search }}"{% endif %}.</p>
-  <p class="text-gray-400 text-sm">Create one with: <code class="text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded text-xs">eide create --name "my-run"</code></p>
+  <svg class="w-12 h-12 text-[#d1d5db] mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+  <p class="text-[#64748b] mb-1">No experiments found{% if search %} matching "{{ search }}"{% endif %}.</p>
+  <p class="text-[#94a3b8] text-sm">Create one from the <a href="/create" class="text-indigo-600 hover:underline">New Run</a> page.</p>
 </div>
 {% else %}
-<!-- Project grouping (MLflow hierarchy style) -->
-{% set projects = {} %}
-{% for entry in entries %}
-{% set pname = entry.get('project') or '(no project)' %}
-{% set _ = projects.update({pname: projects.get(pname, 0) + 1}) %}
-{% endfor %}
-<div class="flex flex-wrap gap-2 mb-4">
-  <span class="text-xs text-gray-500 font-medium mr-1 self-center">Projects:</span>
-  <button onclick="filterByProject(this)" data-project="" class="badge bg-gray-100 text-gray-700 text-xs cursor-pointer hover:bg-gray-200 active">all ({{ entries|length }})</button>
-  {% for pname, pcount in projects.items()|sort %}
-  <button onclick="filterByProject(this)" class="badge bg-purple-50 text-purple-700 text-xs cursor-pointer hover:bg-purple-100" data-project="{{ pname|e }}">{{ pname }} ({{ pcount }})</button>
+
+<!-- Compare bar (hidden by default) -->
+<div id="compare-bar" class="hidden mb-3 p-2.5 bg-indigo-50 border border-indigo-200 rounded-lg flex items-center justify-between">
+  <span class="text-xs text-indigo-700"><span id="compare-count">0</span> experiment(s) selected</span>
+  <div class="flex gap-2">
+    <button onclick="clearSelection()" class="btn btn-ghost text-xs text-indigo-600">Clear</button>
+    <button onclick="compareSelected()" class="btn btn-primary text-xs">
+      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+      Compare
+    </button>
+  </div>
+</div>
+
+<!-- Project filter tabs -->
+{% if project_list %}
+<div class="flex flex-wrap items-center gap-1.5 mb-4">
+  <span class="text-xs text-[#64748b] font-medium mr-1">Project:</span>
+  <a href="/experiments{% if search %}?search={{ search }}{% endif %}" class="tag {% if not current_project %}bg-indigo-100 text-indigo-700{% endif %}">{{ current_project or 'All' }}</a>
+  {% for pname in project_list %}
+  <a href="/experiments?project={{ pname }}{% if search %}&search={{ search }}{% endif %}" class="tag {% if current_project == pname %}bg-indigo-100 text-indigo-700{% endif %}">{{ pname }}</a>
   {% endfor %}
 </div>
+{% endif %}
 
 <div class="card p-0 overflow-hidden">
-  <table class="data-table" id="experiments-table">
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>ID</th>
-        <th>Project</th>
-        <th>Tags</th>
-        <th>Pipeline</th>
-        <th>Risk</th>
-        <th>Timestamp</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for entry in entries %}
-      <tr class="cursor-pointer experiment-row" onclick="window.location='/experiments/{{ entry.id }}'" data-project="{{ (entry.get('project') or '(no project)')|e }}">
-        <td>
-          <a href="/experiments/{{ entry.id }}" class="font-medium text-gray-900 hover:text-indigo-600">{{ entry.name or '(unnamed)' }}</a>
-        </td>
-        <td class="font-mono text-xs text-gray-400">{{ entry.id[:10] }}</td>
-        <td>
-          {% if entry.get('project') %}
-          <span class="badge bg-purple-50 text-purple-700">{{ entry.project }}</span>
-          {% else %}
-          <span class="text-gray-400 text-xs">—</span>
+  <div class="overflow-x-auto">
+    <table class="data-table" id="experiments-table">
+      <thead>
+        <tr>
+          <th class="w-8"><input type="checkbox" id="select-all" onchange="toggleAll()" class="rounded border-[#d1d5db]"></th>
+          <th onclick="sortTable(1)" class="cursor-pointer hover:text-[#0f172a]">Name <span class="text-[10px]">↕</span></th>
+          <th onclick="sortTable(2)" class="cursor-pointer hover:text-[#0f172a]">ID <span class="text-[10px]">↕</span></th>
+          <th onclick="sortTable(3)" class="cursor-pointer hover:text-[#0f172a]">Project <span class="text-[10px]">↕</span></th>
+          <th>Tags</th>
+          {% if entries|selectattr('metrics')|list %}
+          {% set all_metric_keys = [] %}
+          {% for e in entries %}
+          {% for k in e.get('metrics', {}).keys() %}
+          {% if k not in all_metric_keys %}{% set _ = all_metric_keys.append(k) %}{% endif %}
+          {% endfor %}
+          {% endfor %}
+          {% for mk in all_metric_keys[:4] %}
+          <th class="text-right font-mono text-[10px]" title="{{ mk }}">{{ mk[:12] }}</th>
+          {% endfor %}
           {% endif %}
-        </td>
-        <td>
-          <div class="flex flex-wrap gap-1">
-            {% for k, v in entry.tags.items() %}
-            <span class="badge bg-gray-100 text-gray-700 text-[10px]">{{ k }}={{ v }}</span>
+          <th onclick="sortTable(6)" class="cursor-pointer hover:text-[#0f172a] hidden md:table-cell">Date <span class="text-[10px]">↕</span></th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in entries %}
+        <tr class="experiment-row" data-project="{{ entry.get('project') or '' }}" data-id="{{ entry.id }}">
+          <td class="w-8" onclick="event.stopPropagation()">
+            <input type="checkbox" class="exp-checkbox rounded border-[#d1d5db]" value="{{ entry.id }}" onchange="updateCompareBar()">
+          </td>
+          <td onclick="window.location='/experiments/{{ entry.id }}'" class="cursor-pointer">
+            <a href="/experiments/{{ entry.id }}" class="font-medium text-[#0f172a] hover:text-indigo-600 text-sm">{{ entry.name or '(unnamed)' }}</a>
+          </td>
+          <td class="font-mono text-[10px] text-[#94a3b8]">{{ entry.id[:10] }}</td>
+          <td>
+            {% if entry.get('project') %}
+            <span class="tag">{{ entry.project }}</span>
             {% else %}
-            <span class="text-gray-400 text-xs">—</span>
-            {% endfor %}
-          </div>
-        </td>
-        <td class="text-gray-500 text-xs">{{ entry.pipeline_name or '—' }}</td>
-        <td><span class="risk-badge" data-exp-id="{{ entry.id }}"><span class="text-gray-300 text-xs">...</span></span></td>
-        <td class="text-gray-400 font-mono text-xs">{{ entry.timestamp[:19] }}</td>
-        <td class="text-right">
-          <a href="/experiments/{{ entry.id }}" class="text-indigo-600 hover:text-indigo-800 text-xs font-medium">Detail →</a>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+            <span class="text-[#94a3b8] text-[10px]">—</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="flex flex-wrap gap-0.5 max-w-[180px]">
+              {% for k, v in entry.tags.items() %}
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-[#f1f5f9] text-[#475569]">{{ k }}={{ v }}</span>
+              {% else %}
+              <span class="text-[#94a3b8] text-[10px]">—</span>
+              {% endfor %}
+            </div>
+          </td>
+          {% if all_metric_keys %}
+          {% for mk in all_metric_keys[:4] %}
+          <td class="text-right font-mono text-xs {% if entry.metrics and mk in entry.metrics %}text-[#0f172a]{% else %}text-[#d1d5db]{% endif %}">
+            {{ entry.metrics.get(mk, '—') }}
+          </td>
+          {% endfor %}
+          {% endif %}
+          <td class="hidden md:table-cell text-[10px] text-[#94a3b8] font-mono">{{ entry.timestamp[:19] }}</td>
+          <td class="text-right">
+            <a href="/experiments/{{ entry.id }}" class="text-indigo-600 hover:text-indigo-800 text-[10px] font-medium">View →</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 
-<script>
-// Project filter
-window.filterByProject = function(btn) {
-  const project = btn.dataset.project;
-  document.querySelectorAll('[data-project]').forEach(b => {
-    b.classList.remove('bg-purple-100', 'active');
-    b.classList.add('bg-purple-50');
-  });
-  btn.classList.remove('bg-purple-50');
-  btn.classList.add('bg-purple-100', 'active');
-  document.querySelectorAll('.experiment-row').forEach(row => {
-    if (!project || row.dataset.project === project) {
-      row.style.display = '';
-    } else {
-      row.style.display = 'none';
-    }
-  });
-};
+<!-- Pagination -->
+{% if total_pages > 1 %}
+<div class="flex items-center justify-between mt-4 text-xs text-[#64748b]">
+  <span>{{ offset + 1 }}–{{ [offset + limit, total]|min }} of {{ total }}</span>
+  <div class="flex gap-1">
+    {% if page_num > 1 %}
+    <a href="?offset={{ offset - limit }}&limit={{ limit }}{% if search %}&search={{ search }}{% endif %}{% if current_project %}&project={{ current_project }}{% endif %}" class="px-2.5 py-1 rounded border border-[#d1d5db] hover:bg-[#f1f5f9]">← Prev</a>
+    {% endif %}
+    {% if page_num < total_pages %}
+    <a href="?offset={{ offset + limit }}&limit={{ limit }}{% if search %}&search={{ search }}{% endif %}{% if current_project %}&project={{ current_project }}{% endif %}" class="px-2.5 py-1 rounded border border-[#d1d5db] hover:bg-[#f1f5f9]">Next →</a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
 
-// Load risk badges
-(async function() {
-  const badges = document.querySelectorAll('.risk-badge');
-  for (const badge of badges) {
-    try {
-      const resp = await fetch('/api/experiments/' + badge.dataset.expId + '/risk');
-      const data = await resp.json();
-      const level = data.risk_level;
-      const colors = { low: 'bg-green-50 text-green-700', medium: 'bg-yellow-50 text-yellow-700', high: 'bg-red-50 text-red-700', unknown: 'bg-gray-50 text-gray-500' };
-      badge.innerHTML = '<span class="badge ' + (colors[level] || colors.unknown) + ' text-[10px]">' + level.toUpperCase() + '</span>';
-    } catch(e) {
-      badge.innerHTML = '<span class="text-gray-300 text-xs">—</span>';
-    }
+<script>
+function updateCompareBar() {
+  const checked = document.querySelectorAll('.exp-checkbox:checked');
+  const bar = document.getElementById('compare-bar');
+  const count = document.getElementById('compare-count');
+  count.textContent = checked.length;
+  bar.classList.toggle('hidden', checked.length === 0);
+}
+
+function toggleAll() {
+  const checked = document.getElementById('select-all').checked;
+  document.querySelectorAll('.exp-checkbox').forEach(cb => cb.checked = checked);
+  updateCompareBar();
+}
+
+function clearSelection() {
+  document.querySelectorAll('.exp-checkbox').forEach(cb => cb.checked = false);
+  document.getElementById('select-all').checked = false;
+  updateCompareBar();
+}
+
+function compareSelected() {
+  const checked = document.querySelectorAll('.exp-checkbox:checked');
+  if (checked.length < 2) {
+    alert('Select at least 2 experiments to compare.');
+    return;
   }
-})();
+  const ids = Array.from(checked).map(cb => cb.value);
+  const params = new URLSearchParams();
+  params.set('a', ids[0]);
+  params.set('b', ids[1]);
+  if (ids.length > 2) {
+    // Use the first and last for pairwise comparison
+    params.set('a', ids[0]);
+    params.set('b', ids[ids.length - 1]);
+  }
+  window.location = '/diff?' + params.toString();
+}
+
+function sortTable(col) {
+  const table = document.getElementById('experiments-table');
+  const tbody = table.querySelector('tbody');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  const dir = table.dataset.sortDir === 'asc' ? 'desc' : 'asc';
+  table.dataset.sortDir = dir;
+  rows.sort((a, b) => {
+    const ac = a.cells[col].textContent.trim();
+    const bc = b.cells[col].textContent.trim();
+    if (col === 6) return dir === 'asc' ? ac.localeCompare(bc) : bc.localeCompare(ac);
+    const an = parseFloat(ac), bn = parseFloat(bc);
+    if (!isNaN(an) && !isNaN(bn)) return dir === 'asc' ? an - bn : bn - an;
+    return dir === 'asc' ? ac.localeCompare(bc) : bc.localeCompare(ac);
+  });
+  rows.forEach(r => tbody.appendChild(r));
+}
 </script>
 {% endif %}
 

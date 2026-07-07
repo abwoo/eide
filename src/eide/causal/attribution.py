@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from eide.core.diff import DiffCategory, DiffReport
 from eide.core.ir import ExperimentIR
 from eide.diff.engine import DiffEngine
@@ -26,7 +28,7 @@ class CausalAttribution:
     ) -> list[dict]:
         if not self.store:
             return []
-        candidates = []
+        candidates: list[dict[str, Any]] = []
         for entry in self.store.list_experiments():
             if entry["id"] == target.id:
                 continue
@@ -37,15 +39,17 @@ class CausalAttribution:
 
             report = self._engine.diff(target, candidate)
             similarity = self._compute_similarity(report)
-            candidates.append({
-                "experiment_id": candidate.id,
-                "name": candidate.name,
-                "similarity": similarity,
-                "change_count": len(report.changes),
-                "parameter_diff_count": len(
-                    [c for c in report.changes if c.category == DiffCategory.PARAMETER]
-                ),
-            })
+            candidates.append(
+                {
+                    "experiment_id": candidate.id,
+                    "name": candidate.name,
+                    "similarity": similarity,
+                    "change_count": len(report.changes),
+                    "parameter_diff_count": len(
+                        [c for c in report.changes if c.category == DiffCategory.PARAMETER]
+                    ),
+                }
+            )
 
         candidates.sort(key=lambda x: x["similarity"], reverse=True)
         return candidates[:max_results]
@@ -59,7 +63,11 @@ class CausalAttribution:
         param_changes = [c for c in report.changes if c.category == DiffCategory.PARAMETER]
         struct_changes = [c for c in report.changes if c.category == DiffCategory.STRUCTURAL]
         env_changes = [c for c in report.changes if c.category == DiffCategory.ENVIRONMENT]
-        metric_changes = [c for c in report.changes if c.category == DiffCategory.OUTPUT and c.key.startswith("metrics.")]
+        metric_changes = [
+            c
+            for c in report.changes
+            if c.category == DiffCategory.OUTPUT and c.key.startswith("metrics.")
+        ]
 
         explanation = {
             "experiment_a": exp_a.id,
@@ -73,37 +81,47 @@ class CausalAttribution:
                 "environment": len(env_changes),
                 "metrics": len(metric_changes),
             },
-            "likely_cause": self._rank_causes(param_changes, struct_changes, env_changes, metric_changes),
+            "likely_cause": self._rank_causes(
+                param_changes, struct_changes, env_changes, metric_changes
+            ),
         }
         return explanation
 
-    def _rank_causes(self, param_changes: list, struct_changes: list, env_changes: list, metric_changes: list) -> list[dict]:
+    def _rank_causes(
+        self, param_changes: list, struct_changes: list, env_changes: list, metric_changes: list
+    ) -> list[dict]:
         causes = []
 
         if param_changes:
             avg_sig = sum(c.significance for c in param_changes) / max(len(param_changes), 1)
-            causes.append({
-                "cause": "parameter_change",
-                "confidence": min(avg_sig + 0.2, 1.0),
-                "count": len(param_changes),
-                "reasoning": f"{len(param_changes)} parameter(s) changed",
-            })
+            causes.append(
+                {
+                    "cause": "parameter_change",
+                    "confidence": min(avg_sig + 0.2, 1.0),
+                    "count": len(param_changes),
+                    "reasoning": f"{len(param_changes)} parameter(s) changed",
+                }
+            )
 
         if struct_changes:
-            causes.append({
-                "cause": "pipeline_change",
-                "confidence": 0.6,
-                "count": len(struct_changes),
-                "reasoning": f"Pipeline structure changed ({len(struct_changes)} difference(s))",
-            })
+            causes.append(
+                {
+                    "cause": "pipeline_change",
+                    "confidence": 0.6,
+                    "count": len(struct_changes),
+                    "reasoning": f"Pipeline structure changed ({len(struct_changes)} diff(s))",
+                }
+            )
 
         if env_changes:
-            causes.append({
-                "cause": "environment_change",
-                "confidence": 0.4,
-                "count": len(env_changes),
-                "reasoning": f"Environment changed ({len(env_changes)} difference(s))",
-            })
+            causes.append(
+                {
+                    "cause": "environment_change",
+                    "confidence": 0.4,
+                    "count": len(env_changes),
+                    "reasoning": f"Environment changed ({len(env_changes)} difference(s))",
+                }
+            )
 
         metric_impact = len(metric_changes) > 0
         if metric_impact:
