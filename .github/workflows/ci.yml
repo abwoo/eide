@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   pull_request:
-    branches: [main]
+    branches: [main, master]
 
 jobs:
   lint:
@@ -19,11 +19,11 @@ jobs:
           pip install hatchling ruff mypy
           pip install -e ".[dashboard]"
       - name: Ruff check
-        run: ruff check src/eide/
+        run: ruff check src/
       - name: Ruff format
-        run: ruff format --check src/eide/
+        run: ruff format --check src/
       - name: mypy
-        run: mypy src/eide/
+        run: mypy src/
 
   unit:
     strategy:
@@ -41,7 +41,7 @@ jobs:
           pip install -e ".[dashboard]"
       - name: Run unit & e2e tests
         run: |
-          pytest tests/test_eide.py tests/test_cli.py tests/test_graph.py tests/test_mcp.py tests/test_dashboard.py tests/test_e2e.py -v --tb=short
+          pytest tests/test_eide.py tests/test_cli.py tests/test_graph.py tests/test_mcp.py tests/test_dashboard.py tests/test_e2e.py tests/test_search.py tests/test_export_import.py tests/test_impact.py tests/test_intelligence.py tests/test_replay.py -v --tb=short
 
   frontend:
     runs-on: ubuntu-latest
